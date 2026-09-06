@@ -31,9 +31,9 @@ const EXCLUDED_STORAGE_KEY = "excludedFilmIds"; // для колеса
 // ---------- Функция для запроса через прокси с повторными попытками ----------
 async function fetchWithProxy(url, retries = 2) {
   const proxies = [
-    "https://corsproxy.io/?",
+    "https://api.cors.lol/?url=",
+    "https://corsproxy.io/?key=13f882f9&url=", // если ключ вдруг начнёт работать
     "https://api.allorigins.win/raw?url=",
-    "https://cors-anywhere.herokuapp.com/",
   ];
 
   for (let attempt = 0; attempt <= retries; attempt++) {

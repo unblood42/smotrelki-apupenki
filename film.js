@@ -80,9 +80,9 @@ async function fetchMovieDataDirectly(title, year, originalTitle) {
 
   // Массив прокси
   const proxies = [
-    "https://corsproxy.io/?",
+    "https://api.cors.lol/?url=",
+    "https://corsproxy.io/?key=13f882f9&url=", // если ключ вдруг начнёт работать
     "https://api.allorigins.win/raw?url=",
-    "https://cors-anywhere.herokuapp.com/",
   ];
 
   async function requestWithProxy(url) {
