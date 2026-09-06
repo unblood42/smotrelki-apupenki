@@ -28,6 +28,38 @@ const FAVORITES_STORAGE_KEY = "filmFavorites";
 const FILTER_STATE_KEY = "filmFilterState";
 const EXCLUDED_STORAGE_KEY = "excludedFilmIds"; // для колеса
 
+// ---------- Функция для запроса через прокси с повторными попытками ----------
+async function fetchWithProxy(url, retries = 2) {
+  const proxies = [
+    "https://corsproxy.io/?",
+    "https://api.allorigins.win/raw?url=",
+    "https://cors-anywhere.herokuapp.com/",
+  ];
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    for (const proxy of proxies) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(proxy + encodeURIComponent(url), {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+          console.log(`✅ Прокси ${proxy} сработал`);
+          return await response.json();
+        }
+      } catch (error) {
+        console.warn(`❌ Ошибка с прокси ${proxy}:`, error.message);
+      }
+    }
+    if (attempt < retries) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw new Error("Не удалось получить данные через прокси");
+}
+
 // ---------- Сохранение состояния фильтров (всегда в localStorage) ----------
 function saveFilterState() {
   const state = {
@@ -225,17 +257,16 @@ async function getMovieDataFromTMDB(film) {
 
   try {
     console.log(`🔍 Ищем: ${title} (${year})`);
+
+    // Поиск фильма
     const searchUrl = `${TMDB_API_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(originalTitle)}&year=${year}&language=ru-RU`;
-    const searchResp = await fetch(searchUrl);
-    if (!searchResp.ok) throw new Error(`Ошибка поиска: ${searchResp.status}`);
-    const searchData = await searchResp.json();
+    const searchData = await fetchWithProxy(searchUrl);
 
     if (!searchData.results || searchData.results.length === 0) {
       console.warn(`❌ Не найдено фильмов по запросу "${title}"`);
       return null;
     }
 
-    // Выбираем фильм с точным годом, если возможно
     let movie = searchData.results[0];
     if (year) {
       const exactYearMatch = searchData.results.find(
@@ -247,17 +278,9 @@ async function getMovieDataFromTMDB(film) {
       }
     }
 
-    const genresMap = await getGenres();
-    const genreNames = movie.genre_ids
-      .map((id) => genresMap[id] || "")
-      .filter((g) => g);
-
-    const detailResp = await fetch(
-      `${TMDB_API_URL}/movie/${movie.id}?api_key=${TMDB_API_KEY}&language=ru-RU&append_to_response=credits`,
-    );
-    if (!detailResp.ok)
-      throw new Error(`Ошибка получения деталей: ${detailResp.status}`);
-    const detailData = await detailResp.json();
+    // Получение деталей
+    const detailUrl = `${TMDB_API_URL}/movie/${movie.id}?api_key=${TMDB_API_KEY}&language=ru-RU&append_to_response=credits`;
+    const detailData = await fetchWithProxy(detailUrl);
 
     let director = "";
     if (detailData.credits && detailData.credits.crew) {
@@ -266,6 +289,11 @@ async function getMovieDataFromTMDB(film) {
       );
       director = directorObj ? directorObj.name : "";
     }
+
+    const genresMap = await getGenres();
+    const genreNames = movie.genre_ids
+      .map((id) => genresMap[id] || "")
+      .filter((g) => g);
 
     const result = {
       poster: movie.poster_path
