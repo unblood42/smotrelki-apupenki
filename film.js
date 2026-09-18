@@ -1,9 +1,5 @@
 // film.js
 
-const TMDB_API_KEY = "c62338407764b89796db0ebc6d3af4ed";
-const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
-const TMDB_CACHE_KEY = "tmdb_cache";
-
 let currentLoadRating = null;
 let currentFilmIdForReload = null;
 
@@ -13,7 +9,9 @@ function getMovieDataFromCache(title, year) {
   const cached = cache[cacheKey];
   if (cached && Date.now() - cached.timestamp < 7 * 24 * 60 * 60 * 1000) {
     console.log(`✅ Из кеша (film.js): ${title}`);
-    return cached.data;
+    const data = { ...cached.data };
+    if (data.poster) data.poster = normalizePosterUrl(data.poster);
+    return data;
   }
   return null;
 }
@@ -48,11 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!filmData) {
         container.innerHTML =
           '<p style="text-align: center;">Загрузка данных о фильме...</p>';
-        filmData = await fetchMovieDataDirectly(
-          film.title,
-          film.year,
-          film.original_title,
-        );
+        filmData = await getMovieDataFromTMDB(film);
       }
 
       const enrichedFilm = {
@@ -74,92 +68,6 @@ document.addEventListener("DOMContentLoaded", function () {
         '<p style="color: red;">Не удалось загрузить информацию о фильме</p>';
     });
 });
-
-async function fetchMovieDataDirectly(title, year, originalTitle) {
-  const searchQuery = originalTitle || title;
-
-  // Массив прокси
-  const proxies = [
-    "https://api.cors.lol/?url=",
-    "https://corsproxy.io/?key=13f882f9&url=", // если ключ вдруг начнёт работать
-    "https://api.allorigins.win/raw?url=",
-  ];
-
-  async function requestWithProxy(url) {
-    for (const proxy of proxies) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const response = await fetch(proxy + encodeURIComponent(url), {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (e) {
-        console.warn(`Прокси ${proxy} не сработал:`, e.message);
-      }
-    }
-    throw new Error("Все прокси недоступны");
-  }
-
-  try {
-    const searchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchQuery)}&year=${year}&language=ru-RU`;
-    const searchData = await requestWithProxy(searchUrl);
-
-    if (!searchData.results || searchData.results.length === 0) {
-      console.warn(`❌ Не найдено фильмов по запросу "${title}"`);
-      return null;
-    }
-
-    let movie = searchData.results[0];
-    if (year) {
-      const exactYearMatch = searchData.results.find(
-        (m) => m.release_date && m.release_date.startsWith(String(year)),
-      );
-      if (exactYearMatch) {
-        movie = exactYearMatch;
-        console.log(`✅ Найден фильм с точным годом ${year}: ${movie.title}`);
-      }
-    }
-
-    const detailUrl = `https://api.themoviedb.org/3/movie/${movie.id}?api_key=${TMDB_API_KEY}&language=ru-RU&append_to_response=credits`;
-    const detailData = await requestWithProxy(detailUrl);
-
-    let director = "";
-    if (detailData.credits && detailData.credits.crew) {
-      const directorObj = detailData.credits.crew.find(
-        (person) => person.job === "Director",
-      );
-      director = directorObj ? directorObj.name : "";
-    }
-
-    const result = {
-      poster: movie.poster_path
-        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-        : "",
-      genres: [],
-      rating: movie.vote_average ? movie.vote_average.toFixed(1) : "",
-      description: movie.overview || "",
-      year: movie.release_date ? movie.release_date.split("-")[0] : year,
-      director: director,
-      duration: detailData.runtime
-        ? `${Math.floor(detailData.runtime / 60)} ч ${detailData.runtime % 60} мин`
-        : "",
-    };
-
-    const cacheKey = `${title}_${year}`;
-    const cache = JSON.parse(localStorage.getItem(TMDB_CACHE_KEY) || "{}");
-    cache[cacheKey] = { data: result, timestamp: Date.now() };
-    localStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(cache));
-    console.log(`💾 Сохранено в кеш: ${title}`);
-    return result;
-  } catch (error) {
-    console.error(`🔥 Ошибка запроса для "${title}":`, error);
-    return null;
-  }
-}
 
 function renderFilmDetail(film, container) {
   const genresHtml = film.genres
@@ -416,13 +324,3 @@ firebase.auth().onAuthStateChanged((user) => {
     console.log("⚠️ currentLoadRating ещё не определена");
   }
 });
-
-function escapeHtml(unsafe) {
-  if (!unsafe) return "";
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}

@@ -17,9 +17,10 @@ let excludedFilmIds = new Set(); // set id фильмов, которые не �
 // Для избранного используем window.userFavorites, который обновляется из auth.js
 
 // ---------- Конфигурация TMDB ----------
-const TMDB_API_KEY = "c62338407764b89796db0ebc6d3af4ed";
-const TMDB_API_URL = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+// Все запросы идут через собственный Cloudflare Worker-прокси.
+// Ключ API хранится в переменных воркера и на фронт не попадает.
+const TMDB_API_URL = "https://tmdb-proxy.agreeniaev17.workers.dev";
+const TMDB_IMAGE_BASE_URL = `${TMDB_API_URL}/img/w500`;
 
 // Ключи localStorage (используются только когда пользователь не авторизован)
 const TMDB_CACHE_KEY = "tmdb_cache";
@@ -30,34 +31,28 @@ const EXCLUDED_STORAGE_KEY = "excludedFilmIds"; // для колеса
 
 // ---------- Функция для запроса через прокси с повторными попытками ----------
 async function fetchWithProxy(url, retries = 2) {
-  const proxies = [
-    "https://api.cors.lol/?url=",
-    "https://corsproxy.io/?key=13f882f9&url=", // если ключ вдруг начнёт работать
-    "https://api.allorigins.win/raw?url=",
-  ];
-
   for (let attempt = 0; attempt <= retries; attempt++) {
-    for (const proxy of proxies) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const response = await fetch(proxy + encodeURIComponent(url), {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (response.ok) {
-          console.log(`✅ Прокси ${proxy} сработал`);
-          return await response.json();
-        }
-      } catch (error) {
-        console.warn(`❌ Ошибка с прокси ${proxy}:`, error.message);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (resp.ok) return await resp.json();
+      if (resp.status >= 400 && resp.status < 500) {
+        console.warn(`TMDB ответил ${resp.status} для ${url}`);
+        return null;
       }
+    } catch (e) {
+      console.warn(
+        `Попытка ${attempt + 1}/${retries + 1} не удалась:`,
+        e.message,
+      );
     }
     if (attempt < retries) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
-  throw new Error("Не удалось получить данные через прокси");
+  throw new Error("TMDB недоступен после ретраев");
 }
 
 // ---------- Сохранение состояния фильтров (всегда в localStorage) ----------
@@ -221,9 +216,7 @@ async function getGenres() {
     }
   }
   try {
-    const resp = await fetch(
-      `${TMDB_API_URL}/genre/movie/list?api_key=${TMDB_API_KEY}&language=ru-RU`,
-    );
+    const resp = await fetch(`${TMDB_API_URL}/genre/movie/list?language=ru-RU`);
     if (!resp.ok) throw new Error("Ошибка загрузки жанров");
     const data = await resp.json();
     const genresMap = {};
@@ -252,14 +245,18 @@ async function getMovieDataFromTMDB(film) {
     Date.now() - cache[cacheKey].timestamp < 7 * 24 * 60 * 60 * 1000
   ) {
     console.log(`✅ Из кеша: ${title}`);
-    return cache[cacheKey].data;
+    const cachedData = { ...cache[cacheKey].data };
+    if (cachedData.poster) {
+      cachedData.poster = normalizePosterUrl(cachedData.poster);
+    }
+    return cachedData;
   }
 
   try {
     console.log(`🔍 Ищем: ${title} (${year})`);
 
     // Поиск фильма
-    const searchUrl = `${TMDB_API_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(originalTitle)}&year=${year}&language=ru-RU`;
+    const searchUrl = `${TMDB_API_URL}/search/movie?query=${encodeURIComponent(originalTitle)}&year=${year}&language=ru-RU`;
     const searchData = await fetchWithProxy(searchUrl);
 
     if (!searchData.results || searchData.results.length === 0) {
@@ -279,7 +276,7 @@ async function getMovieDataFromTMDB(film) {
     }
 
     // Получение деталей
-    const detailUrl = `${TMDB_API_URL}/movie/${movie.id}?api_key=${TMDB_API_KEY}&language=ru-RU&append_to_response=credits`;
+    const detailUrl = `${TMDB_API_URL}/movie/${movie.id}?language=ru-RU&append_to_response=credits`;
     const detailData = await fetchWithProxy(detailUrl);
 
     let director = "";
@@ -318,6 +315,54 @@ async function getMovieDataFromTMDB(film) {
     console.error(`🔥 Ошибка для "${title}":`, error);
     return null;
   }
+}
+
+// ---------- Прогрессивное обогащение фильмов из TMDB ----------
+// Рендерит сразу из films.json, а TMDB-данные подливает в фоне.
+// onUpdate вызывается батчами (дебаунс 200 мс), чтобы не рендерить 69 раз подряд.
+async function enrichFilmsProgressively(films, onUpdate) {
+  const enriched = [...films];
+  let scheduled = false;
+
+  function scheduleUpdate() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(() => {
+      scheduled = false;
+      if (onUpdate) onUpdate([...enriched]);
+    }, 200);
+  }
+
+  await Promise.all(
+    films.map(async (film, index) => {
+      try {
+        const tmdbData = await getMovieDataFromTMDB(film);
+        if (!tmdbData) return;
+        enriched[index] = {
+          ...film,
+          poster: tmdbData.poster || film.poster,
+          genres:
+            film.genres && film.genres.length > 0
+              ? film.genres
+              : tmdbData.genres && tmdbData.genres.length
+                ? tmdbData.genres
+                : film.genres,
+          rating: tmdbData.rating || film.rating,
+          description: tmdbData.description || film.description || "",
+          director: film.director || tmdbData.director || "",
+          duration: tmdbData.duration || film.duration || "—",
+          durationMinutes: tmdbData.durationMinutes || null,
+        };
+        scheduleUpdate();
+      } catch (e) {
+        console.warn(`Не удалось обогатить "${film.title}":`, e.message);
+      }
+    }),
+  );
+
+  // Финальный рендер гарантированно
+  if (onUpdate) onUpdate([...enriched]);
+  return enriched;
 }
 
 // ---------- Работа с жанрами (UI) ----------
@@ -388,6 +433,17 @@ function syncGenreCheckboxes() {
 }
 
 // ---------- Вспомогательные функции ----------
+
+// Заменяет старый домен картинок TMDB на наш воркер.
+// Нужна для миграции кеша, сохранённого до перехода на прокси.
+function normalizePosterUrl(url) {
+  if (!url) return url;
+  return url.replace(
+    /^https:\/\/image\.tmdb\.org\/t\/p\/(w\d+|original)/,
+    (_, size) => `${TMDB_API_URL}/img/${size}`,
+  );
+}
+
 function escapeHtml(unsafe) {
   if (!unsafe) return "";
   return unsafe

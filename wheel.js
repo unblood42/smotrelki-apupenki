@@ -1,38 +1,16 @@
 // wheel.js
 
-const EXCLUDED_STORAGE_KEY = "excludedFilmIds";
-
-// Загружаем исключённые фильмы
-function loadExcluded() {
-  const stored = localStorage.getItem(EXCLUDED_STORAGE_KEY);
-  if (stored) {
-    try {
-      const arr = JSON.parse(stored);
-      excludedFilmIds = new Set(arr);
-    } catch (e) {
-      console.warn("Ошибка загрузки исключённых фильмов", e);
-      excludedFilmIds = new Set();
-    }
-  } else {
-    excludedFilmIds = new Set();
-  }
-}
-
-function saveExcluded() {
-  localStorage.setItem(
-    EXCLUDED_STORAGE_KEY,
-    JSON.stringify(Array.from(excludedFilmIds)),
-  );
-}
-
-// Переключение исключения фильма
+// ---------- Переключение исключения фильма ----------
+// Использует getExcluded()/saveExcluded() из shared.js — работает и с Firebase, и с localStorage
 function toggleExcluded(filmId) {
-  if (excludedFilmIds.has(filmId)) {
-    excludedFilmIds.delete(filmId);
+  const set = getExcluded();
+  if (set.has(filmId)) {
+    set.delete(filmId);
   } else {
-    excludedFilmIds.add(filmId);
+    set.add(filmId);
   }
-  saveExcluded();
+  saveExcluded(set);
+  excludedFilmIds = set;
   renderAvailableFilms();
   renderExcludedList();
   updateRandomPreview();
@@ -187,67 +165,21 @@ function spinWheel() {
 document.addEventListener("DOMContentLoaded", function () {
   fetch("films.json")
     .then((response) => response.json())
-    .then(async (films) => {
+    .then((films) => {
       allFilms = films;
       allFilms.forEach((film, index) => {
         if (film.id === undefined) film.id = index;
       });
 
-      const enrichedPromises = allFilms.map(async (film) => {
-        const tmdbData = await getMovieDataFromTMDB(film);
-        if (tmdbData) {
-          let durationMinutes = tmdbData.durationMinutes;
-          if (!durationMinutes && film.duration) {
-            const parts = film.duration.match(/(\d+)\s*ч\s*(?:(\d+)\s*мин)?/);
-            if (parts) {
-              const hours = parseInt(parts[1], 10) || 0;
-              const minutes = parseInt(parts[2], 10) || 0;
-              durationMinutes = hours * 60 + minutes;
-            }
-          }
-          return {
-            ...film,
-            poster: tmdbData.poster || film.poster,
-            genres:
-              film.genres && film.genres.length > 0
-                ? film.genres
-                : tmdbData.genres.length
-                  ? tmdbData.genres
-                  : film.genres,
-            rating: tmdbData.rating || film.rating,
-            description: tmdbData.description || film.description || "",
-            director: film.director || tmdbData.director || "",
-            duration: tmdbData.duration || film.duration || "—",
-            durationMinutes: durationMinutes,
-          };
-        } else {
-          let durationMinutes = null;
-          if (film.duration) {
-            const parts = film.duration.match(/(\d+)\s*ч\s*(?:(\d+)\s*мин)?/);
-            if (parts) {
-              const hours = parseInt(parts[1], 10) || 0;
-              const minutes = parseInt(parts[2], 10) || 0;
-              durationMinutes = hours * 60 + minutes;
-            }
-          }
-          return {
-            ...film,
-            durationMinutes: durationMinutes,
-          };
-        }
-      });
-
-      allFilms = await Promise.all(enrichedPromises);
+      // Сразу рендерим из films.json — не ждём TMDB
       filteredFilms = [...allFilms];
+      excludedFilmIds = getExcluded();
 
-      // ---------- Оповещаем страницы марафонов, что фильмы загружены ----------
       if (typeof window.onFilmsLoaded === "function") {
         window.onFilmsLoaded();
       }
 
       loadFilterState();
-      loadExcluded();
-
       populateGenreList();
       syncGenreCheckboxes();
 
@@ -266,6 +198,16 @@ document.addEventListener("DOMContentLoaded", function () {
           const filmId = Number(btn.dataset.filmId);
           toggleExcluded(filmId);
         }
+      });
+
+      // Обогащаем в фоне — UI уже работает
+      enrichFilmsProgressively(films, (updated) => {
+        allFilms = updated;
+        updateFilteredFilms(() => {
+          renderAvailableFilms();
+          updateRandomPreview();
+        });
+        renderExcludedList();
       });
     })
     .catch((error) => {

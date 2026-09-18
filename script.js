@@ -20,46 +20,18 @@ document.addEventListener("DOMContentLoaded", function () {
         if (film.id === undefined) film.id = index;
       });
 
-      container.innerHTML =
-        '<p style="text-align: center;">Загрузка данных с TMDB...</p>';
-
-      const enrichedPromises = allFilms.map(async (film) => {
-        const tmdbData = await getMovieDataFromTMDB(film);
-        if (tmdbData) {
-          return {
-            ...film,
-            poster: tmdbData.poster || film.poster,
-            genres:
-              film.genres && film.genres.length > 0
-                ? film.genres
-                : tmdbData.genres.length
-                  ? tmdbData.genres
-                  : film.genres,
-            rating: tmdbData.rating || film.rating,
-            description: tmdbData.description || film.description || "",
-            director: film.director || tmdbData.director || "",
-            duration: tmdbData.duration || film.duration || "—",
-            durationMinutes: tmdbData.durationMinutes || null,
-          };
-        } else {
-          return film;
-        }
-      });
-
-      const enrichedFilms = await Promise.all(enrichedPromises);
-      allFilms = enrichedFilms;
+      // Сразу рендерим по films.json — не ждём TMDB.
       filteredFilms = [...allFilms];
 
-      // Оповещаем страницы марафонов, что фильмы загружены
+      // Оповещаем марафоны, что базовые фильмы загружены
       if (typeof window.onFilmsLoaded === "function") {
         window.onFilmsLoaded();
       }
 
       populateGenreList();
-
       loadFilterState();
-
       syncGenreCheckboxes();
+
       const searchInput = document.getElementById("search-input");
       if (searchInput) searchInput.value = searchQuery;
 
@@ -69,8 +41,16 @@ document.addEventListener("DOMContentLoaded", function () {
       if (yearToInput) yearToInput.value = yearTo;
 
       updateSortArrows();
-
       updateFilteredFilms(renderFilmCards);
+
+      // Обогащаем в фоне, перерисовываем по мере готовности
+      enrichFilmsProgressively(films, (updated) => {
+        allFilms = updated;
+        updateFilteredFilms(renderFilmCards);
+      }).then((final) => {
+        allFilms = final;
+        window.dispatchEvent(new CustomEvent("films-enriched"));
+      });
     })
     .catch((error) => {
       console.error("Не удалось загрузить фильмы:", error);
