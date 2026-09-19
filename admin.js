@@ -1,7 +1,6 @@
 // admin.js
 
-// UID администратора. Только этот пользователь может писать в films/.
-const ADMIN_UID = "FCX08Xm9e0ZKhkwe3qESrtP0ey13";
+// ADMIN_UID объявлена в auth.js (используется там для ссылки в шапке)
 
 let adminCurrentUser = null;
 let allFilmsFromDb = [];
@@ -50,9 +49,30 @@ document
     const yearRaw = document.getElementById("admin-year").value.trim();
     if (!title) return alert("Введите название");
 
-    const btn = document.getElementById("admin-search-btn");
     const previewEl = document.getElementById("admin-preview");
+    const yearNum = yearRaw ? parseInt(yearRaw, 10) : null;
 
+    // Проверка дубликата по названию (регистронезависимо) + году
+    const duplicate = allFilmsFromDb.find((f) => {
+      const sameTitle =
+        f.title.toLowerCase().trim() === title.toLowerCase().trim();
+      const sameYear = !yearNum || !f.year || f.year === yearNum;
+      return sameTitle && sameYear;
+    });
+
+    if (duplicate) {
+      previewEl.innerHTML = `
+      <p style="color:#ef4444; padding:10px;">
+        ⚠️ Похожий фильм уже есть в базе:
+        <strong>${escapeHtml(duplicate.title)} (${duplicate.year || "—"})</strong>
+        — id #${duplicate.id}.<br>
+        <small>Если это другой фильм (например, ремейк) — уточните год и попробуйте снова.</small>
+      </p>
+    `;
+      return;
+    }
+
+    const btn = document.getElementById("admin-search-btn");
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ищу...';
     previewEl.innerHTML =
@@ -61,7 +81,7 @@ document
     try {
       const mockFilm = {
         title,
-        year: yearRaw ? parseInt(yearRaw, 10) : null,
+        year: yearNum,
       };
       const data = await getMovieDataFromTMDB(mockFilm);
 
@@ -76,7 +96,7 @@ document
       // Собираем "черновик" фильма для сохранения
       pendingFilm = {
         title,
-        year: data.year ? parseInt(data.year, 10) : mockFilm.year,
+        year: data.year ? parseInt(data.year, 10) : yearNum,
         poster: data.poster || "",
         director: data.director || "",
         genres: data.genres || [],
@@ -207,7 +227,11 @@ async function loadFilmsList() {
         <div style="display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid #e2e8f0;">
           <span style="color:#94a3b8; font-size:0.85rem; min-width:30px;">#${f.id}</span>
           <div style="flex:0 0 40px; height:60px;">
-            ${f.poster ? `<img src="${f.poster}" style="width:40px; height:60px; object-fit:cover; border-radius:4px;">` : '<div style="width:40px; height:60px; background:#e2e8f0; border-radius:4px;"></div>'}
+            ${
+              f.poster
+                ? `<img src="${f.poster}" style="width:40px; height:60px; object-fit:cover; border-radius:4px;">`
+                : '<div style="width:40px; height:60px; background:#e2e8f0; border-radius:4px;"></div>'
+            }
           </div>
           <div style="flex:1;">
             <div style="font-weight:600;">${escapeHtml(f.title)}</div>
