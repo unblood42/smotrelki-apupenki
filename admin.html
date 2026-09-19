@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+  </head>
+
+  <body>
+    <header class="header">
+      <h1>🍿 Админ-панель</h1>
+      <nav>
+        <a href="index.html">На главную</a>
+        <a href="marathons.html">Марафоны</a>
+        <a href="wheel.html">Колесо</a>
+        <span id="user-email" style="color: white; margin-right: 10px"></span>
+        <button id="auth-button" class="filter-btn">Войти</button>
+      </nav>
+    </header>
+
+    <main style="max-width: 1000px; margin: 30px auto; padding: 0 20px 60px">
+      <div
+        id="admin-status"
+        style="
+          padding: 15px;
+          background: #f1f5f9;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        "
+      >
+        Проверка доступа...
+      </div>
+
+      <div id="admin-content" style="display: none">
+        <!-- Форма добавления -->
+        <div
+          style="
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+          "
+        >
+          <h2 style="margin-top: 0">Добавить фильм</h2>
+
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              flex-wrap: wrap;
+              margin-bottom: 10px;
+            "
+          >
+            <input
+              type="text"
+              id="admin-title"
+              placeholder="Название (например: Дюна)"
+              style="
+                flex: 2;
+                min-width: 200px;
+                padding: 10px;
+                border: 2px solid #3498db;
+                border-radius: 30px;
+                font-size: 1rem;
+              "
+            />
+            <input
+              type="number"
+              id="admin-year"
+              placeholder="Год"
+              min="1888"
+              max="2100"
+              style="
+                flex: 1;
+                min-width: 100px;
+                padding: 10px;
+                border: 2px solid #3498db;
+                border-radius: 30px;
+                font-size: 1rem;
+              "
+            />
+            <button id="admin-search-btn" class="filter-btn">
+              <i class="fas fa-search"></i> Найти в TMDB
+            </button>
+          </div>
+
+          <div id="admin-preview" style="margin-top: 15px"></div>
+        </div>
+
+        <!-- Список фильмов -->
+        <div
+          style="
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          "
+        >
+          <h2 style="margin-top: 0">
+            Все фильмы (<span id="admin-count">0</span>)
+          </h2>
+          <div id="admin-films-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>Сделано с ❤️ для друзей</p>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJ1zwkcRLh52PCgJKy0gs5h5AcX2ymN40",
+        authDomain: "smotrelki-apupenki.firebaseapp.com",
+        databaseURL: "https://smotrelki-apupenki-default-rtdb.firebaseio.com",
+        projectId: "smotrelki-apupenki",
+        storageBucket: "smotrelki-apupenki.firebasestorage.app",
+        messagingSenderId: "818647276094",
+        appId: "1:818647276094:web:510004f72df788c6e68f6f",
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <script src="shared.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

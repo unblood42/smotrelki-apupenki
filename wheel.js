@@ -163,15 +163,13 @@ function spinWheel() {
 
 // ---------- Инициализация ----------
 document.addEventListener("DOMContentLoaded", function () {
-  fetch("films.json")
-    .then((response) => response.json())
+  loadAllFilmsFromFirebase()
     .then((films) => {
       allFilms = films;
       allFilms.forEach((film, index) => {
         if (film.id === undefined) film.id = index;
       });
 
-      // Сразу рендерим из films.json — не ждём TMDB
       filteredFilms = [...allFilms];
       excludedFilmIds = getExcluded();
 

@@ -29,11 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  fetch("films.json")
-    .then((response) => {
-      if (!response.ok) throw new Error("Ошибка загрузки данных");
-      return response.json();
-    })
+  loadAllFilmsFromFirebase()
     .then(async (films) => {
       const film = films.find((f) => f.id == filmId);
       if (!film) {

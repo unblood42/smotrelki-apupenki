@@ -9,11 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  fetch("films.json")
-    .then((response) => {
-      if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status}`);
-      return response.json();
-    })
+  loadAllFilmsFromFirebase()
     .then(async (films) => {
       allFilms = films;
       allFilms.forEach((film, index) => {

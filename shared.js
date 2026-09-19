@@ -16,6 +16,43 @@ let excludedFilmIds = new Set(); // set id фильмов, которые не �
 
 // Для избранного используем window.userFavorites, который обновляется из auth.js
 
+// ---------- Загрузка фильмов ----------
+// Читает из Firebase. Если Firebase пусто — bootstrap из films.json.
+// Результат кешируется на время сессии.
+let _filmsLoadPromise = null;
+
+async function loadAllFilmsFromFirebase() {
+  if (_filmsLoadPromise) return _filmsLoadPromise;
+
+  _filmsLoadPromise = (async () => {
+    try {
+      const snapshot = await firebase.database().ref("films").once("value");
+      const data = snapshot.val();
+      if (data && Object.keys(data).length > 0) {
+        console.log(
+          `✅ Загружено ${Object.keys(data).length} фильмов из Firebase`,
+        );
+        return Object.keys(data)
+          .map((key) => ({ id: Number(key), ...data[key] }))
+          .sort((a, b) => a.id - b.id);
+      }
+      console.warn(
+        "⚠️ Firebase films пусто, используем films.json как bootstrap",
+      );
+    } catch (e) {
+      console.error("Ошибка чтения films из Firebase:", e);
+    }
+
+    const resp = await fetch("films.json");
+    if (!resp.ok) throw new Error("Не удалось загрузить films.json");
+    const films = await resp.json();
+    console.log(`📁 Загружено ${films.length} фильмов из films.json`);
+    return films;
+  })();
+
+  return _filmsLoadPromise;
+}
+
 // ---------- Конфигурация TMDB ----------
 // Все запросы идут через собственный Cloudflare Worker-прокси.
 // Ключ API хранится в переменных воркера и на фронт не попадает.

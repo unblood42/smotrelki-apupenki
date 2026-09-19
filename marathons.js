@@ -8,16 +8,13 @@ const modal = document.getElementById("create-modal");
 
 // ---------- Загрузка фильмов ----------
 async function fetchAndSetFilms() {
-  // Если фильмы уже загружены – просто сообщаем об этом
   if (allFilms && allFilms.length > 0) {
     if (typeof window.onFilmsLoaded === "function") window.onFilmsLoaded();
     return;
   }
 
   try {
-    const response = await fetch("films.json");
-    if (!response.ok) throw new Error("Ошибка загрузки films.json");
-    const films = await response.json();
+    const films = await loadAllFilmsFromFirebase();
 
     // Обогащаем данными TMDB (как на главной)
     const enrichedPromises = films.map(async (film) => {

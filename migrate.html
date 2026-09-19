@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Миграция films.json → Firebase</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>🍿 Миграция фильмов в Firebase</h1>
+    </header>
+
+    <main style="max-width: 800px; margin: 30px auto; padding: 20px">
+      <div
+        id="status"
+        style="
+          padding: 15px;
+          background: #f1f5f9;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        "
+      >
+        Проверка авторизации...
+      </div>
+      <div
+        id="progress"
+        style="
+          padding: 15px;
+          background: #fff;
+          border: 2px solid #e2e8f0;
+          border-radius: 8px;
+          min-height: 50px;
+        "
+      ></div>
+      <button
+        id="run-migration"
+        class="filter-btn"
+        style="display: none; margin-top: 20px"
+      >
+        Запустить миграцию
+      </button>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJ1zwkcRLh52PCgJKy0gs5h5AcX2ymN40",
+        authDomain: "smotrelki-apupenki.firebaseapp.com",
+        databaseURL: "https://smotrelki-apupenki-default-rtdb.firebaseio.com",
+        projectId: "smotrelki-apupenki",
+        storageBucket: "smotrelki-apupenki.firebasestorage.app",
+        messagingSenderId: "818647276094",
+        appId: "1:818647276094:web:510004f72df788c6e68f6f",
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <script>
+      let currentUser = null;
+
+      firebase.auth().onAuthStateChanged((user) => {
+        currentUser = user;
+        const statusEl = document.getElementById("status");
+        const btn = document.getElementById("run-migration");
+
+        if (!user) {
+          statusEl.innerHTML =
+            'Вы не вошли. Откройте <a href="index.html">главную</a>, войдите через Google и вернитесь сюда.';
+          btn.style.display = "none";
+          return;
+        }
+
+        statusEl.innerHTML = `
+          Вы вошли как: <strong>${user.email}</strong><br>
+          UID: <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${user.uid}</code>
+        `;
+        btn.style.display = "inline-flex";
+      });
+
+      document
+        .getElementById("run-migration")
+        .addEventListener("click", async () => {
+          if (!currentUser) return;
+
+          const btn = document.getElementById("run-migration");
+          const progress = document.getElementById("progress");
+          btn.disabled = true;
+          btn.textContent = "Работаю...";
+
+          try {
+            progress.innerHTML = "1/3 · Загружаю films.json...";
+            const resp = await fetch("films.json");
+            if (!resp.ok) throw new Error("films.json не найден");
+            const films = await resp.json();
+
+            progress.innerHTML = `2/3 · Найдено ${films.length} фильмов. Пишу в Firebase...`;
+
+            let done = 0;
+            for (const film of films) {
+              const id = film.id;
+              if (id === undefined) continue;
+              await firebase.database().ref(`films/${id}`).set(film);
+              done++;
+              if (done % 10 === 0 || done === films.length) {
+                progress.innerHTML = `2/3 · Записано ${done} / ${films.length}...`;
+              }
+            }
+
+            progress.innerHTML = `
+            <strong style="color: #16a34a;">✅ Готово! ${done} фильмов перенесено в Firebase.</strong><br><br>
+            Теперь откройте <a href="index.html">главную</a> — она должна грузить фильмы из базы.<br>
+            <small style="color:#64748b;">Эту страницу можно удалить или оставить как утилиту.</small>
+          `;
+            btn.style.display = "none";
+          } catch (e) {
+            console.error(e);
+            progress.innerHTML = `<span style="color:#ef4444;">Ошибка: ${e.message}</span>`;
+            btn.disabled = false;
+            btn.textContent = "Попробовать снова";
+          }
+        });
+    </script>
+  </body>
+</html>
