@@ -14,6 +14,11 @@ function initAuth() {
     if (user) {
       currentUser = user;
       window.currentUser = user;
+      try {
+        localStorage.setItem(UID_CACHE_KEY, user.uid);
+      } catch (e) {
+        /* ignore */
+      }
       document.body.classList.add("user-logged-in");
       updateAuthButton(user);
       updateUserInfo(user);
@@ -22,6 +27,11 @@ function initAuth() {
     } else {
       currentUser = null;
       window.currentUser = null;
+      try {
+        localStorage.removeItem(UID_CACHE_KEY);
+      } catch (e) {
+        /* ignore */
+      }
       document.body.classList.remove("user-logged-in");
       updateAuthButton(null);
       updateUserInfo(null);
@@ -43,31 +53,52 @@ function updateAuthButton(user) {
 
 // UID администратора — должен совпадать с admin.js и Firebase Rules
 const ADMIN_UID = "FCX08Xm9e0ZKhkwe3qESrtP0ey13";
+const UID_CACHE_KEY = "smotrelki_last_uid";
 
 // Показывает/скрывает ссылку на админку в шапке.
 // Вставляется динамически, чтобы не править каждый HTML-файл.
 function updateAdminLink(user) {
-  const nav = document.querySelector(".header nav");
-  if (!nav) return;
-
   const existing = document.getElementById("admin-link");
   const isAdmin = user && user.uid === ADMIN_UID;
 
-  if (isAdmin && !existing) {
+  // На служебных страницах кнопку не показываем — она там лишняя
+  const path = window.location.pathname;
+  const isServicePage = path.endsWith("admin.html");
+
+  if (isAdmin && !existing && !isServicePage) {
     const link = document.createElement("a");
     link.href = "admin.html";
     link.id = "admin-link";
-    link.textContent = "⚙️ Админка";
-    // Вставляем перед user-email, чтобы был рядом с кнопкой «Выйти»
-    const emailSpan = document.getElementById("user-email");
-    if (emailSpan) {
-      nav.insertBefore(link, emailSpan);
-    } else {
-      nav.appendChild(link);
-    }
-  } else if (!isAdmin && existing) {
+    link.title = "Админ-панель";
+    link.innerHTML = '<i class="fas fa-cog"></i>';
+    document.body.appendChild(link);
+  } else if ((!isAdmin || isServicePage) && existing) {
     existing.remove();
   }
+}
+
+// Мгновенный показ ссылки из кеша — до того, как Firebase ответит.
+// Работает потому, что предыдущая сессия записала UID в localStorage.
+function initAdminLinkFromCache() {
+  try {
+    const path = window.location.pathname;
+    const isServicePage = path.endsWith("admin.html");
+    if (isServicePage) return;
+
+    const cachedUid = localStorage.getItem(UID_CACHE_KEY);
+    if (cachedUid === ADMIN_UID) {
+      updateAdminLink({ uid: cachedUid });
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Запускаем как можно раньше, чтобы кнопка появилась мгновенно
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAdminLinkFromCache);
+} else {
+  initAdminLinkFromCache();
 }
 
 function updateUserInfo(user) {

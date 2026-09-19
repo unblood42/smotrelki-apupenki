@@ -1023,6 +1023,48 @@ body {
   font-weight: normal;
 }
 
+/* Плавающая кнопка админки (видна только администратору) */
+#admin-link {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  z-index: 999;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+#admin-link:hover {
+  transform: translateY(-3px) rotate(45deg);
+  background: linear-gradient(135deg, #9b59b6, #3498db);
+  box-shadow: 0 10px 24px rgba(155, 89, 182, 0.4);
+}
+
+@media (max-width: 640px) {
+  #admin-link {
+    bottom: 16px;
+    right: 16px;
+    width: 46px;
+    height: 46px;
+    font-size: 1.15rem;
+  }
+}
+
+
+
+
 
 
 
