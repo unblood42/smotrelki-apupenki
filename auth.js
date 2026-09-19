@@ -114,6 +114,10 @@ function updateUserInfo(user) {
 
 function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
+  // Всегда показывать выбор аккаунта Google — даже если браузер уже
+  // "помнит" предыдущую сессию. Полезно для тестирования под разными
+  // почтами и для общих устройств.
+  provider.setCustomParameters({ prompt: "select_account" });
   firebase
     .auth()
     .signInWithPopup(provider)
@@ -130,6 +134,8 @@ function signInWithGoogle() {
             window.location.hostname +
             " в консоли Firebase (Authentication → Sign-in method → Authorized domains).",
         );
+      } else if (error.code === "auth/cancelled-popup-request") {
+        // Пользователь закрыл окно выбора аккаунта — это нормально, молчим
       } else {
         alert("Ошибка входа: " + error.message);
       }

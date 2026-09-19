@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backfill tmdbId + переименование</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>🍿 Backfill / Rename</h1>
+    </header>
+
+    <main style="max-width: 900px; margin: 30px auto; padding: 20px">
+      <div
+        id="status"
+        style="
+          padding: 15px;
+          background: #f1f5f9;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        "
+      >
+        Проверка авторизации...
+      </div>
+
+      <div
+        style="
+          background: #fff;
+          border: 2px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 15px;
+        "
+      >
+        <label
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 12px;
+          "
+        >
+          <input
+            type="checkbox"
+            id="process-existing"
+            style="margin-top: 4px"
+            checked
+          />
+          <span>
+            <strong>Обрабатывать фильмы с уже проставленным tmdbId</strong
+            ><br />
+            <small style="color: #64748b">
+              Включи, если фильмы были пропущены в прошлый раз, но tmdbId у них
+              уже есть — утилита загрузит детали напрямую и применит
+              переименование/год.
+            </small>
+          </span>
+        </label>
+
+        <label
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 12px;
+          "
+        >
+          <input
+            type="checkbox"
+            id="ignore-title-mismatch"
+            style="margin-top: 4px"
+          />
+          <span>
+            Разрешить несовпадения по названию (для фильмов без tmdbId)<br />
+            <small style="color: #64748b">
+              Применяется при поиске новых матчей в TMDB.
+            </small>
+          </span>
+        </label>
+
+        <label
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 12px;
+          "
+        >
+          <input type="checkbox" id="rename-to-tmdb" style="margin-top: 4px" />
+          <span>
+            <strong>Переименовать в название TMDB</strong><br />
+            <small style="color: #64748b">
+              Если название не совпало — заменить в базе на TMDB-вариант. Старое
+              сохранится в <code>previousTitle</code>.
+            </small>
+          </span>
+        </label>
+
+        <label
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+          "
+        >
+          <input
+            type="checkbox"
+            id="ignore-year-mismatch"
+            style="margin-top: 4px"
+          />
+          <span>
+            Разрешить несовпадения по году<br />
+            <small style="color: #64748b">
+              Год в базе будет заменён на TMDB-шный при несовпадении. Проверяй
+              лог.
+            </small>
+          </span>
+        </label>
+      </div>
+
+      <div
+        id="progress"
+        style="
+          padding: 15px;
+          background: #fff;
+          border: 2px solid #e2e8f0;
+          border-radius: 8px;
+          min-height: 100px;
+          white-space: pre-line;
+          font-family: monospace;
+          font-size: 0.9rem;
+        "
+      ></div>
+      <button
+        id="run-backfill"
+        class="filter-btn"
+        style="display: none; margin-top: 20px"
+      >
+        Запустить
+      </button>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJ1zwkcRLh52PCgJKy0gs5h5AcX2ymN40",
+        authDomain: "smotrelki-apupenki.firebaseapp.com",
+        databaseURL: "https://smotrelki-apupenki-default-rtdb.firebaseio.com",
+        projectId: "smotrelki-apupenki",
+        storageBucket: "smotrelki-apupenki.firebasestorage.app",
+        messagingSenderId: "818647276094",
+        appId: "1:818647276094:web:510004f72df788c6e68f6f",
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="shared.js"></script>
+
+    <script>
+      const ADMIN_UID = "FCX08Xm9e0ZKhkwe3qESrtP0ey13";
+
+      firebase.auth().onAuthStateChanged((user) => {
+        const statusEl = document.getElementById("status");
+        const btn = document.getElementById("run-backfill");
+        if (!user || user.uid !== ADMIN_UID) {
+          statusEl.innerHTML = "Доступ только для администратора.";
+          btn.style.display = "none";
+          return;
+        }
+        statusEl.innerHTML = `✅ Доступ разрешён (${user.email})`;
+        btn.style.display = "inline-flex";
+      });
+
+      const norm = (s) => (s || "").toLowerCase().trim();
+
+      document
+        .getElementById("run-backfill")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("run-backfill");
+          const progress = document.getElementById("progress");
+          const processExisting =
+            document.getElementById("process-existing").checked;
+          const ignoreTitle = document.getElementById(
+            "ignore-title-mismatch",
+          ).checked;
+          const renameToTmdb =
+            document.getElementById("rename-to-tmdb").checked;
+          const ignoreYear = document.getElementById(
+            "ignore-year-mismatch",
+          ).checked;
+
+          btn.disabled = true;
+          btn.textContent = "Работаю...";
+
+          const logLines = [];
+          const addLog = (line) => {
+            logLines.push(line);
+            progress.textContent = logLines.join("\n");
+            progress.scrollTop = progress.scrollHeight;
+          };
+
+          addLog(
+            `Режим:\n` +
+              `  обрабатывать существующие: ${processExisting ? "ДА" : "нет"}\n` +
+              `  названия: ${ignoreTitle ? "ИГНОР" : "строго"}${renameToTmdb ? " + переименование" : ""}\n` +
+              `  годы: ${ignoreYear ? "ИГНОР" : "строго"}\n`,
+          );
+
+          try {
+            const snap = await firebase.database().ref("films").once("value");
+            const data = snap.val() || {};
+            const ids = Object.keys(data)
+              .map(Number)
+              .sort((a, b) => a - b);
+
+            addLog(`Найдено ${ids.length} фильмов. Начинаю...\n`);
+
+            let updated = 0;
+            let skipped = 0;
+            let notFound = 0;
+            let mismatched = 0;
+            let renamed = 0;
+
+            for (const id of ids) {
+              const film = { id, ...data[id] };
+
+              // === Случай 1: tmdbId уже есть ===
+              if (film.tmdbId) {
+                if (!processExisting) {
+                  skipped++;
+                  addLog(
+                    `⏭️  #${id} ${film.title} — tmdbId есть (${film.tmdbId}), пропускаю`,
+                  );
+                  continue;
+                }
+
+                // Обрабатываем существующий
+                try {
+                  const details = await getMovieDetailsFromTMDB(film.tmdbId);
+                  if (!details) {
+                    notFound++;
+                    addLog(
+                      `❌ #${id} ${film.title} — не удалось загрузить детали по tmdbId ${film.tmdbId}`,
+                    );
+                    continue;
+                  }
+
+                  const updatedFilm = { ...film };
+                  let changed = false;
+                  const changeNotes = [];
+
+                  const titleMatches =
+                    norm(details.title) === norm(film.title) ||
+                    norm(details.originalTitle) === norm(film.title);
+
+                  const yearMatches =
+                    !film.year ||
+                    !details.year ||
+                    Number(film.year) === details.year;
+
+                  // Переименование
+                  if (
+                    renameToTmdb &&
+                    !titleMatches &&
+                    details.title &&
+                    norm(details.title) !== norm(film.title)
+                  ) {
+                    updatedFilm.previousTitle =
+                      film.previousTitle || film.title;
+                    updatedFilm.title = details.title;
+                    changeNotes.push(`"${film.title}" → "${details.title}"`);
+                    renamed++;
+                    changed = true;
+                  }
+
+                  // Год
+                  if (
+                    ignoreYear &&
+                    !yearMatches &&
+                    details.year &&
+                    Number(film.year) !== details.year
+                  ) {
+                    changeNotes.push(`год ${film.year} → ${details.year}`);
+                    updatedFilm.year = details.year;
+                    changed = true;
+                  }
+
+                  if (!updatedFilm.originalTitle && details.originalTitle) {
+                    updatedFilm.originalTitle = details.originalTitle;
+                    changed = true;
+                  }
+                  if (!updatedFilm.poster && details.poster) {
+                    updatedFilm.poster = details.poster;
+                    changed = true;
+                  }
+                  if (!updatedFilm.director && details.director) {
+                    updatedFilm.director = details.director;
+                    changed = true;
+                  }
+                  if (!updatedFilm.duration && details.duration) {
+                    updatedFilm.duration = details.duration;
+                    changed = true;
+                  }
+                  if (!updatedFilm.rating && details.rating) {
+                    updatedFilm.rating = details.rating;
+                    changed = true;
+                  }
+                  if (!updatedFilm.description && details.description) {
+                    updatedFilm.description = details.description;
+                    changed = true;
+                  }
+                  if (
+                    (!updatedFilm.genres || updatedFilm.genres.length === 0) &&
+                    details.genres &&
+                    details.genres.length
+                  ) {
+                    updatedFilm.genres = details.genres;
+                    changed = true;
+                  }
+                  if (!updatedFilm.durationMinutes && details.durationMinutes) {
+                    updatedFilm.durationMinutes = details.durationMinutes;
+                    changed = true;
+                  }
+
+                  if (changed) {
+                    await firebase
+                      .database()
+                      .ref(`films/${id}`)
+                      .set(updatedFilm);
+                    updated++;
+                    addLog(
+                      `✅ #${id} → ${changeNotes.length ? changeNotes.join(", ") : "доп. поля заполнены"}`,
+                    );
+                  } else {
+                    skipped++;
+                    addLog(`⏭️  #${id} ${film.title} — всё совпадает`);
+                  }
+                } catch (e) {
+                  notFound++;
+                  addLog(`🔥 #${id} ${film.title} — ошибка: ${e.message}`);
+                }
+                continue;
+              }
+
+              // === Случай 2: tmdbId нет — ищем в TMDB ===
+              try {
+                const results = await searchMoviesInTMDB(film.title, film.year);
+
+                if (!results || results.length === 0) {
+                  notFound++;
+                  addLog(
+                    `❌ #${id} ${film.title} (${film.year || "—"}) — не найдено в TMDB`,
+                  );
+                  continue;
+                }
+
+                let best = null;
+                if (film.year) {
+                  best = results.find(
+                    (r) =>
+                      r.release_date &&
+                      parseInt(r.release_date.slice(0, 4), 10) ===
+                        Number(film.year),
+                  );
+                }
+                if (!best) best = results[0];
+
+                const candidateYear = best.release_date
+                  ? parseInt(best.release_date.slice(0, 4), 10)
+                  : null;
+
+                const titleMatches =
+                  norm(best.title) === norm(film.title) ||
+                  norm(best.original_title) === norm(film.title);
+
+                const yearMatches =
+                  !film.year ||
+                  !candidateYear ||
+                  Number(film.year) === candidateYear;
+
+                if (!titleMatches && !ignoreTitle) {
+                  mismatched++;
+                  addLog(
+                    `⚠️  #${id} "${film.title}" — TMDB предложил "${best.title}" (${candidateYear}). Пропускаю.`,
+                  );
+                  continue;
+                }
+
+                if (!yearMatches && !ignoreYear) {
+                  mismatched++;
+                  addLog(
+                    `⚠️  #${id} ${film.title} (${film.year}) — TMDB предложил "${best.title}" (${candidateYear}). Пропускаю.`,
+                  );
+                  continue;
+                }
+
+                const details = await getMovieDetailsFromTMDB(best.id);
+                if (!details) {
+                  notFound++;
+                  addLog(
+                    `❌ #${id} ${film.title} — не удалось загрузить детали`,
+                  );
+                  continue;
+                }
+
+                const updatedFilm = { ...film, tmdbId: details.tmdbId };
+                let changed = false;
+                const changeNotes = [];
+
+                if (
+                  renameToTmdb &&
+                  !titleMatches &&
+                  details.title &&
+                  norm(details.title) !== norm(film.title)
+                ) {
+                  updatedFilm.previousTitle = film.title;
+                  updatedFilm.title = details.title;
+                  changeNotes.push(`"${film.title}" → "${details.title}"`);
+                  renamed++;
+                  changed = true;
+                }
+
+                if (
+                  !yearMatches &&
+                  details.year &&
+                  Number(film.year) !== details.year
+                ) {
+                  changeNotes.push(`год ${film.year} → ${details.year}`);
+                  updatedFilm.year = details.year;
+                  changed = true;
+                }
+
+                if (!updatedFilm.originalTitle && details.originalTitle) {
+                  updatedFilm.originalTitle = details.originalTitle;
+                  changed = true;
+                }
+                if (!updatedFilm.poster && details.poster) {
+                  updatedFilm.poster = details.poster;
+                  changed = true;
+                }
+                if (!updatedFilm.director && details.director) {
+                  updatedFilm.director = details.director;
+                  changed = true;
+                }
+                if (!updatedFilm.duration && details.duration) {
+                  updatedFilm.duration = details.duration;
+                  changed = true;
+                }
+                if (!updatedFilm.rating && details.rating) {
+                  updatedFilm.rating = details.rating;
+                  changed = true;
+                }
+                if (!updatedFilm.description && details.description) {
+                  updatedFilm.description = details.description;
+                  changed = true;
+                }
+                if (
+                  (!updatedFilm.genres || updatedFilm.genres.length === 0) &&
+                  details.genres &&
+                  details.genres.length
+                ) {
+                  updatedFilm.genres = details.genres;
+                  changed = true;
+                }
+                if (!updatedFilm.durationMinutes && details.durationMinutes) {
+                  updatedFilm.durationMinutes = details.durationMinutes;
+                  changed = true;
+                }
+
+                await firebase.database().ref(`films/${id}`).set(updatedFilm);
+                updated++;
+
+                const tags = [];
+                if (!titleMatches && !renameToTmdb) {
+                  tags.push(`название TMDB: "${details.title}"`);
+                }
+                if (changeNotes.length) tags.push(...changeNotes);
+
+                addLog(
+                  `✅ #${id} ${film.title} → tmdbId=${details.tmdbId}${tags.length ? ` (${tags.join(", ")})` : ""}`,
+                );
+              } catch (e) {
+                notFound++;
+                addLog(`🔥 #${id} ${film.title} — ошибка: ${e.message}`);
+              }
+            }
+
+            addLog(
+              `\n——— ИТОГО ———\n` +
+                `Обновлено: ${updated}\n` +
+                `Переименовано: ${renamed}\n` +
+                `Пропущено: ${skipped}\n` +
+                `Не найдено / ошибок: ${notFound}\n` +
+                `Пропущено из-за несовпадений: ${mismatched}`,
+            );
+            btn.style.display = "none";
+          } catch (e) {
+            console.error(e);
+            addLog(`\n❌ КРИТИЧЕСКАЯ ОШИБКА: ${e.message}`);
+            btn.disabled = false;
+            btn.textContent = "Попробовать снова";
+          }
+        });
+    </script>
+  </body>
+</html>

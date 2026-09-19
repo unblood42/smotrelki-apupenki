@@ -330,6 +330,9 @@ async function getMovieDataFromTMDB(film) {
       .filter((g) => g);
 
     const result = {
+      tmdbId: movie.id,
+      title: movie.title || "",
+      originalTitle: movie.original_title || "",
       poster: movie.poster_path
         ? `${TMDB_IMAGE_BASE_URL}${movie.poster_path}`
         : "",
@@ -350,6 +353,67 @@ async function getMovieDataFromTMDB(film) {
     return result;
   } catch (error) {
     console.error(`🔥 Ошибка для "${title}":`, error);
+    return null;
+  }
+}
+
+// ---------- Поиск списка фильмов в TMDB (для админки) ----------
+// Возвращает массив кандидатов без деталей (только базовые поля из search).
+async function searchMoviesInTMDB(query, year) {
+  const params = new URLSearchParams({
+    query: query,
+    language: "ru-RU",
+  });
+  if (year) params.set("year", year);
+
+  const url = `${TMDB_API_URL}/search/movie?${params.toString()}`;
+  try {
+    const data = await fetchWithProxy(url);
+    if (!data || !data.results) return [];
+    return data.results;
+  } catch (e) {
+    console.warn("searchMoviesInTMDB error:", e.message);
+    return [];
+  }
+}
+
+// ---------- Детали фильма по TMDB id ----------
+// Возвращает обогащённый объект с tmdbId, готовый для сохранения в Firebase.
+async function getMovieDetailsFromTMDB(tmdbId) {
+  const url = `${TMDB_API_URL}/movie/${tmdbId}?language=ru-RU&append_to_response=credits`;
+  try {
+    const detail = await fetchWithProxy(url);
+    if (!detail) return null;
+
+    let director = "";
+    if (detail.credits && detail.credits.crew) {
+      const directorObj = detail.credits.crew.find((p) => p.job === "Director");
+      director = directorObj ? directorObj.name : "";
+    }
+
+    const genreNames = (detail.genres || []).map((g) => g.name);
+
+    return {
+      tmdbId: detail.id,
+      title: detail.title || "",
+      originalTitle: detail.original_title || "",
+      poster: detail.poster_path
+        ? `${TMDB_IMAGE_BASE_URL}${detail.poster_path}`
+        : "",
+      genres: genreNames,
+      rating: detail.vote_average ? detail.vote_average.toFixed(1) : "",
+      description: detail.overview || "",
+      year: detail.release_date
+        ? parseInt(detail.release_date.split("-")[0], 10)
+        : null,
+      director: director,
+      duration: detail.runtime
+        ? `${Math.floor(detail.runtime / 60)} ч ${detail.runtime % 60} мин`
+        : "",
+      durationMinutes: detail.runtime || null,
+    };
+  } catch (e) {
+    console.warn("getMovieDetailsFromTMDB error:", e.message);
     return null;
   }
 }
