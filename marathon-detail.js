@@ -69,23 +69,62 @@ function renderMarathon(data) {
     if (isWatched) watchedCount++;
 
     html += `
-      <div class="film-card" data-film-id="${filmId}" style="position:relative;">
-        <div class="film-poster">
-          ${filmInfo.poster ? `<img src="${filmInfo.poster}" alt="${escapeHtml(filmInfo.title)}">` : '<div class="poster-placeholder"><i class="fas fa-film"></i></div>'}
-        </div>
-        <div class="film-info">
-          <h3 class="film-title">${escapeHtml(filmInfo.title)} (${filmInfo.year})</h3>
-          <div style="display:flex; gap:5px; flex-wrap:wrap; margin:5px 0;">
-            ${filmInfo.genres.map((g) => `<span class="film-genre">${escapeHtml(g)}</span>`).join("")}
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-            <span style="font-size:0.9rem; color:#64748b;">Добавил: ${filmData.addedBy}</span>
-            <button class="watched-btn filter-btn" data-film-id="${filmId}" style="background:${isWatched ? "#22c55e" : "#94a3b8"}; padding:5px 12px; font-size:0.8rem;">
-              ${isWatched ? "✅ Просмотрено" : "☐ Отметить"}
-            </button>
-          </div>
-          <button class="remove-film-btn" data-film-id="${filmId}" style="background:none; border:none; color:#ef4444; cursor:pointer; position:absolute; top:5px; right:5px; font-size:1.2rem;" title="Удалить фильм">
+      <div class="marathon-film-card" data-film-id="${filmId}" style="
+        position: relative;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      ">
+        <div style="position: relative; aspect-ratio: 2/3; background: #e2e8f0;">
+          ${
+            filmInfo.poster
+              ? `<img src="${filmInfo.poster}" alt="${escapeHtml(filmInfo.title)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
+              : '<div class="poster-placeholder" style="width:100%;height:100%;"><i class="fas fa-film"></i></div>'
+          }
+          <button class="remove-film-btn" data-film-id="${filmId}" title="Удалить фильм" style="
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+          ">
             <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div style="padding: 12px; display: flex; flex-direction: column; flex: 1;">
+          <h3 style="margin: 0 0 6px 0; font-size: 1rem; line-height: 1.3; color: #1e293b;">
+            ${escapeHtml(filmInfo.title)} (${filmInfo.year})
+          </h3>
+          <div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px;">
+            ${filmInfo.genres
+              .slice(0, 4)
+              .map(
+                (g) =>
+                  `<span class="film-genre" style="font-size: 0.72rem; padding: 3px 8px; margin: 0;">${escapeHtml(g)}</span>`,
+              )
+              .join("")}
+          </div>
+          <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
+            Добавил: ${escapeHtml(filmData.addedBy || "—")}
+          </div>
+          <button class="watched-btn filter-btn" data-film-id="${filmId}" style="
+            width: 100%;
+            background: ${isWatched ? "#22c55e" : "#94a3b8"};
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            margin-top: auto;
+          ">
+            ${isWatched ? "✅ Просмотрено" : "☐ Отметить просмотренным"}
           </button>
         </div>
       </div>
@@ -178,6 +217,7 @@ filmSearchInput.addEventListener("input", function () {
               loadMarathon();
               filmSearchInput.value = "";
               suggestionsContainer.style.display = "none";
+              suggestionsContainer.innerHTML = "";
             })
             .catch((err) => alert("Ошибка: " + err.message));
         }
@@ -203,6 +243,20 @@ filmSearchInput.addEventListener("keypress", function (e) {
 });
 
 document.getElementById("add-film-btn").addEventListener("click", function () {
+  const query = filmSearchInput.value.trim();
+
+  // Сначала проверяем пустое поле — не трогаем Firebase вообще
+  if (!query) {
+    alert("Сначала введите название фильма");
+    return;
+  }
+
+  if (!allFilms || allFilms.length === 0) {
+    alert("Фильмы ещё загружаются, подождите");
+    return;
+  }
+
+  // Только если есть текст — пытаемся кликнуть по первой подсказке
   const firstSuggestion = document.querySelector(
     "#marathon-suggestions .suggestion-item",
   );
@@ -210,12 +264,8 @@ document.getElementById("add-film-btn").addEventListener("click", function () {
     firstSuggestion.click();
     return;
   }
-  const query = filmSearchInput.value.trim();
-  if (!query) return alert("Введите название");
-  if (!allFilms || allFilms.length === 0) {
-    alert("Фильмы ещё загружаются, подождите");
-    return;
-  }
+
+  // Если подсказки нет — ищем сами
   const found = allFilms.find((f) =>
     f.title.toLowerCase().includes(query.toLowerCase()),
   );
@@ -251,30 +301,38 @@ document
   });
 
 // ---------- Инициализация ----------
-function init() {
-  // Если фильмы уже загружены – сразу запускаем
-  if (allFilms && allFilms.length > 0) {
-    loadMarathon();
-    firebase
-      .database()
-      .ref(`marathons/${marathonId}`)
-      .on("value", () => {
-        loadMarathon();
+async function init() {
+  // Загружаем фильмы из Firebase (с фолбэком на films.json)
+  if (!allFilms || allFilms.length === 0) {
+    try {
+      allFilms = await loadAllFilmsFromFirebase();
+      filteredFilms = [...allFilms];
+
+      // Фоновое обогащение TMDB-данными (не блокирует UI)
+      enrichFilmsProgressively(allFilms, (updated) => {
+        allFilms = updated;
+      }).then((final) => {
+        allFilms = final;
+        window.dispatchEvent(new CustomEvent("films-enriched"));
       });
-  } else {
-    // Ждём события загрузки
-    window.onFilmsLoaded = function () {
-      loadMarathon();
-      firebase
-        .database()
-        .ref(`marathons/${marathonId}`)
-        .on("value", () => {
-          loadMarathon();
-        });
-      window.onFilmsLoaded = null;
-    };
+    } catch (e) {
+      console.error("Не удалось загрузить фильмы:", e);
+    }
   }
+
+  // Рендерим марафон
+  await loadMarathon();
+
+  // Подписываемся на изменения марафона в реальном времени
+  firebase
+    .database()
+    .ref(`marathons/${marathonId}`)
+    .on("value", () => {
+      loadMarathon();
+    });
 }
+
+init();
 
 init();
 

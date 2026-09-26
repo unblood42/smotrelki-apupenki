@@ -87,26 +87,124 @@ function renderSelectedFilms() {
 async function loadMarathons() {
   try {
     const marathons = await getMarathons();
+    const user = firebase.auth().currentUser;
+
     if (marathons.length === 0) {
       marathonsList.innerHTML =
         '<p style="text-align:center;color:#64748b;">Нет марафонов. Создайте первый!</p>';
       return;
     }
+
     marathonsList.innerHTML = marathons
-      .map(
-        (m) => `
-      <a href="marathon.html?id=${m.id}" class="film-card-link" style="text-decoration:none; color:inherit;">
-        <div class="film-card" style="padding:20px; position:relative;">
-          ${m.coverUrl ? `<div style="height:120px; background-image:url('${escapeHtml(m.coverUrl)}'); background-size:cover; background-position:center; border-radius:8px; margin-bottom:10px;"></div>` : ""}
-          <h3 style="margin-top:0;">${escapeHtml(m.name)}</h3>
-          <p style="color:#64748b;">${escapeHtml(m.description || "")}</p>
-          <p style="color:#94a3b8; font-size:0.9rem;">Фильмов: ${Object.keys(m.films || {}).length}</p>
-          <p style="color:#94a3b8; font-size:0.9rem;">Создатель: ${m.createdBy}</p>
-        </div>
-      </a>
-    `,
-      )
+      .map((m) => {
+        const canDelete = user && m.createdBy === user.uid;
+        const creatorLabel =
+          user && m.createdBy === user.uid ? "Вы" : m.createdBy || "—";
+
+        return `
+          <div class="marathon-card-wrapper" data-marathon-id="${m.id}" style="
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          ">
+            ${
+              m.coverUrl
+                ? `<div style="height:120px; background-image:url('${escapeHtml(m.coverUrl)}'); background-size:cover; background-position:center;"></div>`
+                : ""
+            }
+            <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
+              <h3 style="margin-top:0;">${escapeHtml(m.name)}</h3>
+              <p style="color:#64748b; flex: 1;">${escapeHtml(m.description || "")}</p>
+              <p style="color:#94a3b8; font-size:0.9rem; margin: 4px 0;">
+                Фильмов: ${Object.keys(m.films || {}).length}
+              </p>
+              <p style="color:#94a3b8; font-size:0.9rem; margin: 4px 0;">
+                Создатель: ${escapeHtml(creatorLabel)}
+              </p>
+            </div>
+            ${
+              canDelete
+                ? `
+              <button class="marathon-delete-btn" data-marathon-id="${m.id}" title="Удалить марафон" style="
+                position: absolute;
+                top: 10px; right: 10px;
+                width: 34px; height: 34px;
+                border-radius: 50%;
+                background: rgba(239, 68, 68, 0.9);
+                color: white;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.9rem;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                transition: background 0.15s, transform 0.15s;
+              ">
+                <i class="fas fa-trash"></i>
+              </button>
+            `
+                : ""
+            }
+          </div>
+        `;
+      })
       .join("");
+
+    // Клик по карточке — переход на страницу марафона
+    marathonsList.querySelectorAll(".marathon-card-wrapper").forEach((card) => {
+      card.addEventListener("click", () => {
+        const id = card.dataset.marathonId;
+        window.location.href = `marathon.html?id=${id}`;
+      });
+
+      card.addEventListener("mouseenter", () => {
+        card.style.transform = "translateY(-3px)";
+        card.style.boxShadow = "0 8px 20px rgba(0,0,0,0.12)";
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.transform = "";
+        card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
+      });
+    });
+
+    // Кнопка удаления
+    marathonsList.querySelectorAll(".marathon-delete-btn").forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.background = "#dc2626";
+        btn.style.transform = "scale(1.08)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.background = "rgba(239, 68, 68, 0.9)";
+        btn.style.transform = "";
+      });
+
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.marathonId;
+        const marathon = marathons.find((m) => m.id === id);
+        if (
+          !confirm(
+            `Удалить марафон «${marathon?.name || "—"}»?\nЭто действие необратимо.`,
+          )
+        )
+          return;
+
+        try {
+          await deleteMarathon(id);
+          await loadMarathons(); // явная перерисовка
+        } catch (err) {
+          alert("Ошибка удаления: " + err.message);
+        }
+      });
+    });
   } catch (e) {
     console.error(e);
     marathonsList.innerHTML =
@@ -292,6 +390,12 @@ firebase
   .on("value", () => {
     loadMarathons();
   });
+
+// Перерисовываем список при логине/разлогине — чтобы кнопки удаления
+// появлялись/исчезали без перезагрузки страницы.
+firebase.auth().onAuthStateChanged(() => {
+  loadMarathons();
+});
 
 // ---------- Загрузка списка марафонов при старте ----------
 // Если фильмы уже загружены – сразу показываем, иначе ждём события
