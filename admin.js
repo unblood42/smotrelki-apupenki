@@ -373,6 +373,7 @@ async function deleteFilm(filmId) {
 
 // ================= ПРЕДЛОЖЕНИЯ ДРУЗЕЙ =================
 
+// В админке показываем только pending. Approved/rejected скрываем.
 async function loadSuggestions() {
   const container = document.getElementById("admin-suggestions-list");
   const countEl = document.getElementById("admin-suggestions-count");
@@ -381,19 +382,20 @@ async function loadSuggestions() {
   try {
     const snap = await firebase.database().ref("filmSuggestions").once("value");
     const data = snap.val() || {};
-    const suggestions = Object.keys(data)
-      .map((k) => ({ id: k, ...data[k] }))
+    const all = Object.keys(data).map((k) => ({ id: k, ...data[k] }));
+    const pending = all
+      .filter((s) => !s.status || s.status === "pending")
       .sort((a, b) => (b.suggestedAt || 0) - (a.suggestedAt || 0));
 
-    countEl.textContent = suggestions.length;
+    countEl.textContent = pending.length;
 
-    if (suggestions.length === 0) {
+    if (pending.length === 0) {
       container.innerHTML =
-        '<p style="color:#94a3b8;">Пока никто ничего не предлагал.</p>';
+        '<p style="color:#94a3b8;">Нет предложений на рассмотрении.</p>';
       return;
     }
 
-    container.innerHTML = suggestions
+    container.innerHTML = pending
       .map(
         (s) => `
         <div style="display:flex; gap:12px; padding:12px; border-bottom:1px solid #e2e8f0; align-items:flex-start;">
@@ -430,6 +432,7 @@ async function loadSuggestions() {
   }
 }
 
+// ---------- Одобрить: TMDB → films/, статус → approved ----------
 async function approveSuggestion(suggestionId) {
   const snap = await firebase
     .database()
@@ -450,36 +453,52 @@ async function approveSuggestion(suggestionId) {
   }
 
   try {
-    // Ищем детали через TMDB (получаем tmdbId + всё остальное)
+    // Ищем детали через TMDB
+    // Если юзер уже выбрал фильм в TMDB — берём его напрямую
     let details = null;
     try {
-      const results = await searchMoviesInTMDB(
-        suggestion.title,
-        suggestion.year,
-      );
-      if (results && results.length > 0) {
-        details = await getMovieDetailsFromTMDB(results[0].id);
+      if (suggestion.tmdbId) {
+        details = await getMovieDetailsFromTMDB(suggestion.tmdbId);
+      }
+      if (!details) {
+        const results = await searchMoviesInTMDB(
+          suggestion.title,
+          suggestion.year,
+        );
+        if (results && results.length > 0) {
+          details = await getMovieDetailsFromTMDB(results[0].id);
+        }
       }
     } catch (e) {
-      console.warn("TMDB lookup failed, сохраняем базовые поля", e.message);
+      console.warn("TMDB lookup failed:", e.message);
     }
 
-    // Проверяем дубликат
+    // Проверка дубликата по tmdbId или title+year
     if (details) {
-      const dup = findDuplicate(details.tmdbId, details.title, details.year);
+      const norm = (s) => (s || "").toLowerCase().trim();
+      const dup = allFilmsFromDb.find((f) => {
+        if (f.tmdbId && details.tmdbId) {
+          return Number(f.tmdbId) === Number(details.tmdbId);
+        }
+        const sameTitle = norm(f.title) === norm(details.title);
+        const sameYear =
+          !details.year || Number(f.year) === Number(details.year);
+        return sameTitle && sameYear;
+      });
       if (dup) {
         alert(
-          `Такой фильм уже есть в базе: ${dup.title} (${dup.year || "—"}), id #${dup.id}. Предложение будет удалено.`,
+          `Такой фильм уже есть в базе: ${dup.title} (${dup.year || "—"}), id #${dup.id}. Предложение помечено как отклонённое.`,
         );
         await firebase
           .database()
-          .ref(`filmSuggestions/${suggestionId}`)
-          .remove();
+          .ref(`filmSuggestions/${suggestionId}/status`)
+          .set("rejected");
         loadSuggestions();
         return;
       }
     }
 
+    // Новый id
     const filmsSnap = await firebase.database().ref("films").once("value");
     const films = filmsSnap.val() || {};
     const ids = Object.keys(films)
@@ -504,7 +523,11 @@ async function approveSuggestion(suggestionId) {
     };
 
     await firebase.database().ref(`films/${newId}`).set(filmData);
-    await firebase.database().ref(`filmSuggestions/${suggestionId}`).remove();
+    // Вместо удаления — статус approved
+    await firebase
+      .database()
+      .ref(`filmSuggestions/${suggestionId}/status`)
+      .set("approved");
 
     loadSuggestions();
     loadFilmsList();
@@ -518,10 +541,14 @@ async function approveSuggestion(suggestionId) {
   }
 }
 
+// ---------- Отклонить: статус → rejected ----------
 async function rejectSuggestion(suggestionId) {
   if (!confirm("Отклонить предложение?")) return;
   try {
-    await firebase.database().ref(`filmSuggestions/${suggestionId}`).remove();
+    await firebase
+      .database()
+      .ref(`filmSuggestions/${suggestionId}/status`)
+      .set("rejected");
     loadSuggestions();
   } catch (e) {
     alert("Ошибка: " + e.message);
