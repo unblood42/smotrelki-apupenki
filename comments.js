@@ -120,8 +120,17 @@ function renderCommentItem(c) {
     : `<span class="comment-author">${escapeHtml(authorName)}</span>
        <span class="comment-action-label">поставил оценку</span>`;
 
-  // Плашка оценки — показывается если сохранён снимок
-  const ratingBadgeHtml = hasRating ? renderRatingBadge(c.ratingSnapshot) : "";
+  // Плашка оценки:
+  //  - если есть текст → компактная плашка с итогом
+  //  - если только оценка без текста → разбивка по критериям
+  let ratingBadgeHtml = "";
+  if (hasRating) {
+    if (hasText) {
+      ratingBadgeHtml = renderRatingBadge(c.ratingSnapshot);
+    } else {
+      ratingBadgeHtml = renderRatingBreakdown(c.ratingSnapshot);
+    }
+  }
 
   // Текст комментария — только если есть
   const textHtml = hasText

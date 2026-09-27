@@ -79,26 +79,32 @@ function renderFeedItem(item) {
     ? `<img src="${filmPoster}" alt="">`
     : `<div class="feed-item-poster-ph"><i class="fas fa-film"></i></div>`;
 
-  // Плашка оценки
+  // Плашка оценки:
+  //  - есть текст → компактная плашка с итогом
+  //  - только оценка без текста → разбивка по критериям
   let ratingHtml = "";
   if (item.ratingSnapshot) {
-    const pair = getScoreColor(item.ratingSnapshot.total);
-    const breakdown = [
-      `Сценарий: ${item.ratingSnapshot.s1}`,
-      `Режиссура: ${item.ratingSnapshot.s2}`,
-      `Визуал: ${item.ratingSnapshot.s3}`,
-      `Актёры: ${item.ratingSnapshot.s4}`,
-      `Жанр: ${item.ratingSnapshot.s5}`,
-      `Впечатление: ${item.ratingSnapshot.m}`,
-    ].join("\n");
+    if (item.text) {
+      const pair = getScoreColor(item.ratingSnapshot.total);
+      const breakdown = [
+        `Сценарий: ${item.ratingSnapshot.s1}`,
+        `Режиссура: ${item.ratingSnapshot.s2}`,
+        `Визуал: ${item.ratingSnapshot.s3}`,
+        `Актёры: ${item.ratingSnapshot.s4}`,
+        `Жанр: ${item.ratingSnapshot.s5}`,
+        `Впечатление: ${item.ratingSnapshot.m}`,
+      ].join("\n");
 
-    ratingHtml = `
-      <div class="comment-rating-badge has-tooltip" data-tooltip="${escapeHtml(breakdown)}">
-        <span class="comment-rating-score"
-          style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
-        >${item.ratingSnapshot.total}</span>
-      </div>
-    `;
+      ratingHtml = `
+        <div class="comment-rating-badge has-tooltip" data-tooltip="${escapeHtml(breakdown)}">
+          <span class="comment-rating-score"
+            style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
+          >${item.ratingSnapshot.total}</span>
+        </div>
+      `;
+    } else {
+      ratingHtml = renderRatingBreakdown(item.ratingSnapshot);
+    }
   }
 
   // Текст

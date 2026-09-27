@@ -765,3 +765,48 @@ function getScoreColor(score) {
     colorPairs.find((p) => score < p.max) || colorPairs[colorPairs.length - 1]
   );
 }
+
+// ---------- Разбивка оценки по критериям (для записей без комментария) ----------
+function renderRatingBreakdown(snapshot) {
+  if (!snapshot) return "";
+  const pair = getScoreColor(snapshot.total);
+
+  // Критерии: base (синие) — как .scale-base, subj (фиолетовый) — как .scale-subj
+  const items = [
+    { label: "Сценарий", value: snapshot.s1, type: "base" },
+    { label: "Режиссура", value: snapshot.s2, type: "base" },
+    { label: "Визуал + музыка", value: snapshot.s3, type: "base" },
+    { label: "Актёрский состав", value: snapshot.s4, type: "base" },
+    {
+      label: "Хорош в рамках жанра и для своего времени?",
+      value: snapshot.s5,
+      type: "base",
+    },
+    { label: "Общее впечатление", value: snapshot.m, type: "subj" },
+  ];
+
+  const cellsHtml = items
+    .map(
+      (it) => `
+        <div class="rating-breakdown-cell rating-breakdown-cell-${it.type}">
+          <span class="rating-breakdown-label">${it.label}</span>
+          <span class="rating-breakdown-value">${it.value}</span>
+        </div>
+      `,
+    )
+    .join("");
+
+  return `
+    <div class="rating-breakdown">
+      <div class="rating-breakdown-header">
+        <span class="rating-breakdown-total"
+          style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
+        >${snapshot.total}</span>
+        <span class="rating-breakdown-title">оценка по критериям</span>
+      </div>
+      <div class="rating-breakdown-grid">
+        ${cellsHtml}
+      </div>
+    </div>
+  `;
+}

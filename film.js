@@ -180,6 +180,13 @@ function renderFilmDetail(film, container) {
         <span>Можно поставить только оценку, написать только комментарий — или и то, и другое.</span>
       </div>
 
+      <!-- Кнопка «Оценить фильм» (показывается когда оценки нет и ползунки закрыты) -->
+      <div id="open-rating-block">
+        <button id="open-rating-btn" class="rating-open-btn">
+          <i class="fas fa-star"></i> Оценить фильм
+        </button>
+      </div>
+
       <!-- Свёрнутое состояние: показывается если оценка уже сохранена -->
       <div id="rating-summary" class="rating-summary" style="display: none;">
         <div class="rating-summary-content">
@@ -192,7 +199,7 @@ function renderFilmDetail(film, container) {
       </div>
 
       <!-- Развёрнутое состояние: ползунки -->
-      <div id="rating-full">
+      <div id="rating-full" style="display: none;">
         <div class="rating-scales">
           ${createScale("scale1", "Сценарий")}
           ${createScale("scale2", "Режиссура")}
@@ -283,6 +290,8 @@ function initRatingSystem(filmId) {
 
   const ratingSummary = document.getElementById("rating-summary");
   const ratingFull = document.getElementById("rating-full");
+  const openRatingBlock = document.getElementById("open-rating-block");
+  const openRatingBtn = document.getElementById("open-rating-btn");
   const savedScoreBadge = document.getElementById("saved-score-badge");
   const editRatingBtn = document.getElementById("edit-rating-btn");
   const cancelEditBtn = document.getElementById("cancel-edit-rating-btn");
@@ -296,7 +305,8 @@ function initRatingSystem(filmId) {
   // ---------- Состояние ----------
   let isDirty = false; // ползунки изменены, но не сохранены
   let hasSavedRating = false; // у пользователя есть сохранённая оценка
-  let isEditing = false; // ползунки развёрнуты для правки
+  let isEditing = false; // правка сохранённой оценки
+  let isRatingOpen = false; // открыто поле оценки в режиме «первой оценки»
   let isSaving = false;
   let lastLoadedRating = null;
   let currentUser = firebase.auth().currentUser;
@@ -304,10 +314,6 @@ function initRatingSystem(filmId) {
   firebase.auth().onAuthStateChanged((user) => {
     currentUser = user;
     updateAuthState();
-    // Если гость — оценка идёт в localStorage, метку сохраним
-    if (!user && hasSavedRating) {
-      // hasSavedRating в localStorage валиден, оставляем как есть
-    }
   });
 
   // ---------- Расчёт итоговой оценки ----------
@@ -327,10 +333,6 @@ function initRatingSystem(filmId) {
     return Math.round((avgBase + additionalWeight) * 10) / 10;
   }
 
-  function computeTotalFromData(data) {
-    return computeTotal(data.s1, data.s2, data.s3, data.s4, data.s5, data.m);
-  }
-
   // ---------- Визуал ползунков ----------
   function updateRangeBackground(range, startColor, endColor) {
     const min = parseFloat(range.min);
@@ -347,7 +349,7 @@ function initRatingSystem(filmId) {
     element.style.color = pair.text;
   }
 
-  // ---------- Текстовый tooltip с разбивкой ----------
+  // ---------- Текстовый tooltip ----------
   function formatRatingTooltip(data) {
     return [
       `Сценарий: ${data.s1}`,
@@ -386,11 +388,6 @@ function initRatingSystem(filmId) {
     totalSpan.textContent = total;
     setScoreColor(total, totalSpan);
 
-    if (savedScoreBadge) {
-      savedScoreBadge.textContent = total;
-    }
-
-    // Tooltip с разбивкой по критериям — и на итоговом бейдже, и на свёрнутой карточке
     const breakdown = formatRatingTooltip({ s1, s2, s3, s4, s5, m });
     if (savedScoreBadge) {
       savedScoreBadge.textContent = total;
@@ -406,25 +403,23 @@ function initRatingSystem(filmId) {
 
   // ---------- Состояние «свёрнуто / развёрнуто» ----------
   function updateRatingView() {
-    if (!ratingSummary || !ratingFull) return;
+    if (!ratingSummary || !ratingFull || !openRatingBlock) return;
 
     const showSummary = hasSavedRating && !isEditing;
+    const showFull = isEditing || isRatingOpen;
+    const showOpenBtn = !hasSavedRating && !isRatingOpen;
 
-    if (showSummary) {
-      ratingSummary.style.display = "flex";
-      ratingFull.style.display = "none";
-      if (cancelEditBtn) cancelEditBtn.style.display = "none";
-    } else {
-      ratingSummary.style.display = "none";
-      ratingFull.style.display = "block";
-      if (cancelEditBtn) {
-        cancelEditBtn.style.display =
-          isEditing && hasSavedRating ? "inline-flex" : "none";
-      }
+    ratingSummary.style.display = showSummary ? "flex" : "none";
+    ratingFull.style.display = showFull ? "block" : "none";
+    openRatingBlock.style.display = showOpenBtn ? "block" : "none";
+
+    if (cancelEditBtn) {
+      cancelEditBtn.style.display = showFull ? "inline-flex" : "none";
+      cancelEditBtn.textContent = hasSavedRating ? "Отмена" : "Скрыть оценку";
     }
   }
 
-  // ---------- Текст и состояние кнопки ----------
+  // ---------- Текст и состояние кнопки сохранения ----------
   function updateSaveButton() {
     if (!saveBtn) return;
     saveBtn.classList.remove("ready", "saved-pulse");
@@ -443,9 +438,12 @@ function initRatingSystem(filmId) {
 
     const commentText = ((commentInput && commentInput.value) || "").trim();
     const hasComment = currentUser && commentText.length > 0;
-    const willSaveRating = isDirty;
 
-    // --- Выбор текста ---
+    // Оценку сохраняем, если:
+    // 1. Есть несохранённые изменения ползунков, ИЛИ
+    // 2. Открыто поле первой оценки (даже без движения — дефолтные 5)
+    const willSaveRating = isDirty || (isRatingOpen && !hasSavedRating);
+
     let text;
     if (willSaveRating && hasComment) {
       text = hasSavedRating
@@ -519,7 +517,7 @@ function initRatingSystem(filmId) {
     if (isSaving) return;
 
     const commentText = ((commentInput && commentInput.value) || "").trim();
-    const willSaveRating = isDirty;
+    const willSaveRating = isDirty || (isRatingOpen && !hasSavedRating);
     const willSaveComment = currentUser && commentText.length > 0;
 
     if (!willSaveRating && !willSaveComment) return;
@@ -547,10 +545,11 @@ function initRatingSystem(filmId) {
         isDirty = false;
         hasSavedRating = true;
         isEditing = false;
+        isRatingOpen = false;
         lastLoadedRating = ratingData;
       }
 
-      // 2. Запись в ленту — комментарий и/или оценка
+      // 2. Запись в ленту
       if (willSaveComment || willSaveRating) {
         const entry = {
           filmId: filmId,
@@ -563,9 +562,6 @@ function initRatingSystem(filmId) {
           entry.text = commentText;
         }
 
-        // Прикрепляем снимок оценки — либо когда сохраняем оценку сейчас,
-        // либо когда оценка уже была и пользователь просто пишет комментарий
-        // (в этом случае берём последнее сохранённое значение).
         if (willSaveRating) {
           const snap = collectRatingData();
           entry.ratingSnapshot = {
@@ -591,11 +587,9 @@ function initRatingSystem(filmId) {
         if (willSaveComment) commentInput.value = "";
       }
 
-      // 3. Обновляем интерфейс — сворачиваем ползунки если оценка сохранена
       updateRatingView();
       updateUI();
 
-      // 4. Визуальный акцент «сохранено»
       isSaving = false;
       saveBtn.textContent = "✓ Сохранено";
       saveBtn.disabled = true;
@@ -642,7 +636,6 @@ function initRatingSystem(filmId) {
     } else {
       hasSavedRating = false;
       lastLoadedRating = null;
-      // Дефолтные значения
       scale1.value = 5;
       scale2.value = 5;
       scale3.value = 5;
@@ -653,13 +646,14 @@ function initRatingSystem(filmId) {
 
     isDirty = false;
     isEditing = false;
+    isRatingOpen = false;
     isSaving = false;
     updateUI();
     updateRatingView();
     updateSaveButton();
   }
 
-  // ---------- Сброс к дефолту ----------
+  // ---------- Сброс ползунков к дефолту ----------
   function resetSlidersToDefault() {
     scale1.value = 5;
     scale2.value = 5;
@@ -685,6 +679,7 @@ function initRatingSystem(filmId) {
       hasSavedRating = false;
       isDirty = false;
       isEditing = false;
+      isRatingOpen = false;
       lastLoadedRating = null;
       resetSlidersToDefault();
       updateUI();
@@ -696,25 +691,41 @@ function initRatingSystem(filmId) {
     }
   }
 
-  // ---------- Развернуть ползунки (правка) ----------
+  // ---------- Раскрыть поле оценки (первая оценка) ----------
+  function startOpenRating() {
+    isRatingOpen = true;
+    isDirty = false;
+    resetSlidersToDefault();
+    updateUI();
+    updateRatingView();
+    updateSaveButton();
+  }
+
+  // ---------- Раскрыть поле оценки (правка сохранённой) ----------
   function startEditingRating() {
     isEditing = true;
     updateRatingView();
     updateSaveButton();
   }
 
-  // ---------- Отменить правку ----------
+  // ---------- Отмена: правка сохранённой ИЛИ скрытие новой ----------
   function cancelEditingRating() {
-    if (!lastLoadedRating) return;
-    // Возвращаем ползунки к сохранённой оценке
-    scale1.value = lastLoadedRating.s1;
-    scale2.value = lastLoadedRating.s2;
-    scale3.value = lastLoadedRating.s3;
-    scale4.value = lastLoadedRating.s4;
-    scale5.value = lastLoadedRating.s5;
-    subj.value = lastLoadedRating.m;
+    if (hasSavedRating) {
+      // Возвращаем ползунки к сохранённой оценке
+      if (lastLoadedRating) {
+        scale1.value = lastLoadedRating.s1;
+        scale2.value = lastLoadedRating.s2;
+        scale3.value = lastLoadedRating.s3;
+        scale4.value = lastLoadedRating.s4;
+        scale5.value = lastLoadedRating.s5;
+        subj.value = lastLoadedRating.m;
+      }
+      isEditing = false;
+    } else {
+      // Просто закрываем — оценка не сохраняется
+      isRatingOpen = false;
+    }
     isDirty = false;
-    isEditing = false;
     updateUI();
     updateRatingView();
     updateSaveButton();
@@ -734,6 +745,7 @@ function initRatingSystem(filmId) {
 
   if (saveBtn) saveBtn.addEventListener("click", saveReview);
   if (deleteBtn) deleteBtn.addEventListener("click", deleteRating);
+  if (openRatingBtn) openRatingBtn.addEventListener("click", startOpenRating);
   if (editRatingBtn)
     editRatingBtn.addEventListener("click", startEditingRating);
   if (cancelEditBtn)
