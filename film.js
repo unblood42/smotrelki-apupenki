@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       renderFilmDetail(enrichedFilm, container);
       initRatingSystem(film.id);
+      initFriendsRatings(film.id);
       if (typeof initCommentsForFilm === "function") {
         initCommentsForFilm(film.id);
       }
@@ -142,6 +143,131 @@ function renderFilmDetailSkeleton(container) {
   `;
 }
 
+// ---------- Блок «Оценки друзей» ----------
+function initFriendsRatings(filmId) {
+  const section = document.getElementById("friends-ratings-section");
+  if (!section) return;
+
+  firebase
+    .database()
+    .ref(`filmRatings/${filmId}`)
+    .on("value", (snap) => {
+      const data = snap.val() || {};
+      renderFriendsRatings(data);
+    });
+}
+
+function renderFriendsRatings(data) {
+  const section = document.getElementById("friends-ratings-section");
+  const countEl = document.getElementById("friends-ratings-count");
+  const summaryEl = document.getElementById("friends-ratings-summary");
+  const listEl = document.getElementById("friends-ratings-list");
+  const inlineEl = document.getElementById("film-friends-rating-inline");
+
+  if (!section || !listEl) return;
+
+  const agg = aggregateFilmRatings(data);
+
+  if (agg.count === 0) {
+    section.style.display = "none";
+    if (inlineEl) inlineEl.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+  if (countEl) countEl.textContent = agg.count;
+
+  const pair = getScoreColor(agg.average);
+  const breakdown = [
+    `Сценарий: ${agg.breakdown.s1}`,
+    `Режиссура: ${agg.breakdown.s2}`,
+    `Визуал + музыка: ${agg.breakdown.s3}`,
+    `Актёрский состав: ${agg.breakdown.s4}`,
+    `Хорош в рамках жанра: ${agg.breakdown.s5}`,
+    `Общее впечатление: ${agg.breakdown.m}`,
+  ].join("\n");
+
+  // --- Средняя оценка наверху, рядом с TMDB ---
+  if (inlineEl) {
+    inlineEl.style.display = "block";
+    inlineEl.innerHTML = `
+      <span class="film-friends-rating-label">
+        <i class="fas fa-users"></i> Друзья:
+      </span>
+      <span class="film-friends-rating-score has-tooltip"
+        data-tooltip="${escapeHtml(breakdown)}"
+        style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
+      >${agg.average}</span>
+      <span class="film-friends-rating-count">(${agg.count})</span>
+    `;
+  }
+
+  // --- Средняя оценка внутри блока (крупная карточка) ---
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div class="friends-ratings-average has-tooltip" data-tooltip="${escapeHtml(breakdown)}">
+        <span class="friends-ratings-average-score"
+          style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
+        >${agg.average}</span>
+        <span class="friends-ratings-average-label">средняя оценка друзей</span>
+      </div>
+    `;
+  }
+
+  // --- Список ---
+  const items = [...agg.items].sort(
+    (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+  );
+
+  listEl.innerHTML = items
+    .map((it) => {
+      const itemPair = getScoreColor(it.total);
+      const itemBreakdown = [
+        `Сценарий: ${it.s1}`,
+        `Режиссура: ${it.s2}`,
+        `Визуал + музыка: ${it.s3}`,
+        `Актёрский состав: ${it.s4}`,
+        `Хорош в рамках жанра: ${it.s5}`,
+        `Общее впечатление: ${it.m}`,
+      ].join("\n");
+
+      const name = friendsRatingsAuthorName(it);
+      const initials = friendsRatingsInitials(name);
+
+      return `
+        <div class="friends-rating-item">
+          <div class="friends-rating-avatar">${escapeHtml(initials)}</div>
+          <div class="friends-rating-name">${escapeHtml(name)}</div>
+          <div class="friends-rating-badge has-tooltip" data-tooltip="${escapeHtml(itemBreakdown)}">
+            <span class="friends-rating-score"
+              style="background-color: ${itemPair.bg}; border-color: ${itemPair.border}; color: ${itemPair.text};"
+            >${it.total}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function friendsRatingsAuthorName(item) {
+  if (item.uidEmail) {
+    const at = item.uidEmail.indexOf("@");
+    return at > 0 ? item.uidEmail.slice(0, at) : item.uidEmail;
+  }
+  return item.uid || "Аноним";
+}
+
+function friendsRatingsInitials(name) {
+  if (!name) return "?";
+  const parts = name
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 function renderFilmDetail(film, container) {
   const genresHtml = film.genres
     .map((genre) => `<span class="film-genre">${escapeHtml(genre)}</span>`)
@@ -156,7 +282,7 @@ function renderFilmDetail(film, container) {
     ? `<img src="${film.poster}" alt="${escapeHtml(film.title)}" style="max-width: 300px; border-radius: 8px;">`
     : '<div class="poster-placeholder"><i class="fas fa-film"></i></div>';
   const durationText = film.duration ? film.duration : "—";
-  const ratingText =
+  const tmdbRatingText =
     film.rating && film.rating !== "" ? `⭐ ${film.rating}` : "";
 
   const html = `
@@ -168,7 +294,12 @@ function renderFilmDetail(film, container) {
         <p><strong>Жанры:</strong></p>
         <div class="film-genres">${genresHtml}</div>
         <p><strong>Длительность:</strong> ${durationText}</p>
-        ${ratingText ? `<p><strong>Рейтинг:</strong> ${ratingText}</p>` : ""}
+        ${
+          tmdbRatingText
+            ? `<p><strong>Рейтинг TMDB:</strong> ${tmdbRatingText}</p>`
+            : ""
+        }
+        <div id="film-friends-rating-inline" class="film-friends-rating-inline" style="display: none;"></div>
         ${videoLink}
         ${descriptionHtml}
       </div>
@@ -248,6 +379,12 @@ function renderFilmDetail(film, container) {
       </div>
     </div>
 
+    <div class="friends-ratings-section" id="friends-ratings-section" style="display: none;">
+      <h3>Оценки друзей <span id="friends-ratings-count" class="friends-ratings-count-badge">0</span></h3>
+      <div class="friends-ratings-summary" id="friends-ratings-summary"></div>
+      <div class="friends-ratings-list" id="friends-ratings-list"></div>
+    </div>
+
     <div class="comments-section">
       <h3>Отзывы и оценки (<span id="comments-count">0</span>)</h3>
       <div id="comments-list">
@@ -318,19 +455,7 @@ function initRatingSystem(filmId) {
 
   // ---------- Расчёт итоговой оценки ----------
   function computeTotal(s1, s2, s3, s4, s5, m) {
-    const avgBase = (s1 + s2 + s3 + s4 + s5) / 5;
-    const diff = m - avgBase;
-    let additionalWeight = 0;
-    if (diff >= 0) {
-      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
-      const part2 = (0.5 * Math.pow(m, 2) + 50) / 100;
-      additionalWeight = part1 * part2;
-    } else {
-      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
-      const part2 = (-0.5 * Math.pow(m, 2) + 100) / 100;
-      additionalWeight = part1 * part2;
-    }
-    return Math.round((avgBase + additionalWeight) * 10) / 10;
+    return computeRatingTotal(s1, s2, s3, s4, s5, m);
   }
 
   // ---------- Визуал ползунков ----------
@@ -633,6 +758,44 @@ function initRatingSystem(filmId) {
       subj.value = data.m;
       hasSavedRating = true;
       lastLoadedRating = data;
+
+      // Lazy-backfill: если оценка есть в users, но ещё нет в filmRatings —
+      // пишем её. Нужно, чтобы в блоке «Оценки друзей» подтянулись старые оценки.
+      if (user) {
+        try {
+          const snap = await firebase
+            .database()
+            .ref(`filmRatings/${filmId}/${user.uid}`)
+            .once("value");
+          if (!snap.exists()) {
+            const total = computeRatingTotal(
+              data.s1,
+              data.s2,
+              data.s3,
+              data.s4,
+              data.s5,
+              data.m,
+            );
+            await firebase
+              .database()
+              .ref(`filmRatings/${filmId}/${user.uid}`)
+              .set({
+                s1: data.s1,
+                s2: data.s2,
+                s3: data.s3,
+                s4: data.s4,
+                s5: data.s5,
+                m: data.m,
+                total: total,
+                uidEmail: user.email || "",
+                updatedAt: data.updatedAt || Date.now(),
+              });
+            log("🔁 Backfill filmRatings выполнен для", user.uid);
+          }
+        } catch (e) {
+          warn("Backfill filmRatings не удался:", e.message);
+        }
+      }
     } else {
       hasSavedRating = false;
       lastLoadedRating = null;

@@ -759,6 +759,51 @@ async function deleteMarathon(marathonId) {
   await firebase.database().ref(`marathons/${marathonId}`).remove();
 }
 
+// ---------- Универсальный расчёт итоговой оценки ----------
+// Используется в film.js, filmRatings и в renderRatingBreakdown
+function computeRatingTotal(s1, s2, s3, s4, s5, m) {
+  const avgBase = (s1 + s2 + s3 + s4 + s5) / 5;
+  const diff = m - avgBase;
+  let additionalWeight = 0;
+  if (diff >= 0) {
+    const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
+    const part2 = (0.5 * Math.pow(m, 2) + 50) / 100;
+    additionalWeight = part1 * part2;
+  } else {
+    const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
+    const part2 = (-0.5 * Math.pow(m, 2) + 100) / 100;
+    additionalWeight = part1 * part2;
+  }
+  return Math.round((avgBase + additionalWeight) * 10) / 10;
+}
+
+// ---------- Агрегация и рендер блока «Оценки друзей» ----------
+function aggregateFilmRatings(ratingsObj) {
+  const items = Object.keys(ratingsObj || {}).map((uid) => ({
+    uid,
+    ...ratingsObj[uid],
+  }));
+  if (items.length === 0) {
+    return { count: 0, average: 0, breakdown: null, items: [] };
+  }
+  const sum = items.reduce((acc, it) => acc + (it.total || 0), 0);
+  const average = Math.round((sum / items.length) * 10) / 10;
+
+  const sumCriterion = (key) =>
+    items.reduce((acc, it) => acc + (it[key] || 0), 0) / items.length;
+
+  const breakdown = {
+    s1: Math.round(sumCriterion("s1") * 10) / 10,
+    s2: Math.round(sumCriterion("s2") * 10) / 10,
+    s3: Math.round(sumCriterion("s3") * 10) / 10,
+    s4: Math.round(sumCriterion("s4") * 10) / 10,
+    s5: Math.round(sumCriterion("s5") * 10) / 10,
+    m: Math.round(sumCriterion("m") * 10) / 10,
+  };
+
+  return { count: items.length, average, breakdown, items };
+}
+
 // ---------- Цвета для бейджей с оценками ----------
 // Используется в film.js (итоговый бейдж, свёрнутая карточка) и comments.js (плашки)
 function getScoreColor(score) {

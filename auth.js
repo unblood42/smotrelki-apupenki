@@ -190,16 +190,45 @@ function saveExcludedToFirebase(excludedArray) {
 async function saveRatingToFirebase(filmId, ratingData) {
   const user = firebase.auth().currentUser;
   if (!user) {
-    warn("⚠️ saveRatingToFirebase: пользователь не авторизован");
+    console.warn("⚠️ saveRatingToFirebase: пользователь не авторизован");
     return;
   }
-  const path = `users/${user.uid}/ratings/${filmId}`;
-  log("💾 Сохранение в Firebase по пути:", path, ratingData);
+  const total = computeRatingTotal(
+    ratingData.s1,
+    ratingData.s2,
+    ratingData.s3,
+    ratingData.s4,
+    ratingData.s5,
+    ratingData.m,
+  );
+
+  // Денормализация для быстрого чтения оценок по фильму
+  const filmRatingEntry = {
+    s1: ratingData.s1,
+    s2: ratingData.s2,
+    s3: ratingData.s3,
+    s4: ratingData.s4,
+    s5: ratingData.s5,
+    m: ratingData.m,
+    total: total,
+    uidEmail: user.email || "",
+    updatedAt: ratingData.updatedAt || Date.now(),
+  };
+
   try {
-    await firebase.database().ref(path).set(ratingData);
-    log("✅ Оценка успешно сохранена в Firebase");
+    await Promise.all([
+      firebase
+        .database()
+        .ref(`users/${user.uid}/ratings/${filmId}`)
+        .set(ratingData),
+      firebase
+        .database()
+        .ref(`filmRatings/${filmId}/${user.uid}`)
+        .set(filmRatingEntry),
+    ]);
+    console.log("✅ Оценка сохранена (users + filmRatings)");
   } catch (error) {
-    console.error("❌ Ошибка сохранения оценки в Firebase:", error);
+    console.error("❌ Ошибка сохранения оценки:", error);
     throw error;
   }
 }
@@ -226,10 +255,12 @@ async function loadRatingFromFirebase(filmId) {
 async function deleteRatingFromFirebase(filmId) {
   const user = firebase.auth().currentUser;
   if (!user) return;
-  const path = `users/${user.uid}/ratings/${filmId}`;
   try {
-    await firebase.database().ref(path).remove();
-    log("🗑️ Оценка удалена из Firebase");
+    await Promise.all([
+      firebase.database().ref(`users/${user.uid}/ratings/${filmId}`).remove(),
+      firebase.database().ref(`filmRatings/${filmId}/${user.uid}`).remove(),
+    ]);
+    console.log("🗑️ Оценка удалена (users + filmRatings)");
   } catch (error) {
     console.error("❌ Ошибка удаления оценки:", error);
     throw error;
