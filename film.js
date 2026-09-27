@@ -99,65 +99,72 @@ function renderFilmDetail(film, container) {
         ${descriptionHtml}
       </div>
     </div>
-    <div class="rating-section">
-      <h3>Оцени фильм</h3>
-      <div class="rating-scales">
-        ${createScale("scale1", "Сценарий")}
-        ${createScale("scale2", "Режиссура")}
-        ${createScale("scale3", "Визуал + музыка")}
-        ${createScale("scale4", "Актёрский состав")}
-        ${createScale("scale5", "Хорош в рамках жанра + для своего времени?")}
-        <div class="scale-item scale-subj">
-          <div class="scale-header">
-            <span class="scale-name">Общее впечатление</span>
-            <span class="scale-value" id="subj-value">5</span>
-          </div>
-          <input type="range" id="subj" min="1" max="10" step="1" value="5">
+    <div class="review-section">
+      <h3>Ваш отзыв</h3>
+
+      <!-- Свёрнутое состояние: показывается если оценка уже сохранена -->
+      <div id="rating-summary" class="rating-summary" style="display: none;">
+        <div class="rating-summary-content">
+          <div class="rating-summary-label">Ваша оценка</div>
+          <div class="rating-summary-score" id="saved-score-badge">0</div>
         </div>
-      </div>
-      <div class="total-rating">
-        <strong>Итоговая оценка:</strong> <span id="total-score" class="score-badge">0</span>
-      </div>
-      <div class="rating-save-wrapper">
-        <button id="rating-save-btn" class="filter-btn rating-save-btn">
-          Оценить фильм
+        <button id="edit-rating-btn" class="rating-summary-edit">
+          <i class="fas fa-pen"></i> Изменить оценку
         </button>
-        <div id="rating-delete-wrapper" style="display: none; margin-top: 10px;">
-          <button id="rating-delete-btn" class="rating-delete-btn">
-            Удалить оценку
-          </button>
+      </div>
+
+      <!-- Развёрнутое состояние: ползунки -->
+      <div id="rating-full">
+        <div class="rating-scales">
+          ${createScale("scale1", "Сценарий")}
+          ${createScale("scale2", "Режиссура")}
+          ${createScale("scale3", "Визуал + музыка")}
+          ${createScale("scale4", "Актёрский состав")}
+          ${createScale("scale5", "Хорош в рамках жанра + для своего времени?")}
+          <div class="scale-item scale-subj">
+            <div class="scale-header">
+              <span class="scale-name">Общее впечатление</span>
+              <span class="scale-value" id="subj-value">5</span>
+            </div>
+            <input type="range" id="subj" min="1" max="10" step="1" value="5">
+          </div>
         </div>
+
+        <div class="total-rating">
+          <strong>Итоговая оценка:</strong> <span id="total-score" class="score-badge">0</span>
+        </div>
+      </div>
+
+      <div class="review-comment-block">
+        <label for="review-comment-input" class="review-comment-label">
+          Комментарий <span class="review-comment-hint">(опционально, можно оставить несколько)</span>
+        </label>
+        <textarea
+          id="review-comment-input"
+          maxlength="1000"
+          placeholder="Поделитесь мыслями о фильме, шуткой или запоминающейся фразой..."
+        ></textarea>
+      </div>
+
+      <div id="comment-auth-hint" class="review-auth-hint" style="display: none;">
+        <a href="#" onclick="signInWithGoogle(); return false;">Войдите</a>, чтобы оставить комментарий вместе с оценкой
+      </div>
+
+      <div class="review-actions">
+        <button id="review-save-btn" class="review-action-btn primary" disabled>
+          Сохранить отзыв
+        </button>
+        <button id="cancel-edit-rating-btn" class="review-action-btn ghost" style="display: none;">
+          Отмена
+        </button>
+        <button id="rating-delete-btn" class="review-action-btn danger" style="display: none;">
+          Удалить оценку
+        </button>
       </div>
     </div>
 
     <div class="comments-section">
-      <h3>Комментарии (<span id="comments-count">0</span>)</h3>
-
-      <div id="comment-auth-hint" style="display: none; padding: 15px; background: #f1f5f9; border-radius: 12px; color: #475569; text-align: center;">
-        <a href="#" onclick="signInWithGoogle(); return false;" style="color: #3498db; font-weight: 600;">Войдите</a>, чтобы оставить комментарий
-      </div>
-
-      <div id="comment-form" style="display: none; margin-bottom: 20px;">
-        <textarea
-          id="comment-input"
-          placeholder="Напишите что-нибудь об этом фильме..."
-          maxlength="1000"
-          style="
-            width: 100%; padding: 12px;
-            border: 2px solid #e2e8f0; border-radius: 12px;
-            resize: vertical; min-height: 80px;
-            box-sizing: border-box; font-family: inherit;
-            font-size: 0.95rem;
-          "
-        ></textarea>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px;">
-          <div id="comment-error" style="color:#ef4444; font-size:0.85rem;"></div>
-          <button id="comment-submit-btn" class="filter-btn" style="background:#3498db;">
-            <i class="fas fa-paper-plane"></i> Отправить
-          </button>
-        </div>
-      </div>
-
+      <h3>Отзывы и оценки (<span id="comments-count">0</span>)</h3>
       <div id="comments-list">
         <p style="color:#94a3b8; text-align:center; padding: 20px 0;">Загрузка...</p>
       </div>
@@ -179,12 +186,14 @@ function createScale(id, name) {
 }
 
 function initRatingSystem(filmId) {
+  // ---------- Элементы ----------
   const scale1 = document.getElementById("scale1");
   const scale2 = document.getElementById("scale2");
   const scale3 = document.getElementById("scale3");
   const scale4 = document.getElementById("scale4");
   const scale5 = document.getElementById("scale5");
   const subj = document.getElementById("subj");
+  const commentInput = document.getElementById("review-comment-input");
 
   const scale1value = document.getElementById("scale1-value");
   const scale2value = document.getElementById("scale2-value");
@@ -193,17 +202,56 @@ function initRatingSystem(filmId) {
   const scale5value = document.getElementById("scale5-value");
   const subjvalue = document.getElementById("subj-value");
   const totalSpan = document.getElementById("total-score");
-  const saveBtn = document.getElementById("rating-save-btn");
-  const deleteBtn = document.getElementById("rating-delete-btn");
-  const deleteWrapper = document.getElementById("rating-delete-wrapper");
 
-  if (!scale1 || !scale2 || !scale3 || !scale4 || !scale5 || !subj) return;
+  const ratingSummary = document.getElementById("rating-summary");
+  const ratingFull = document.getElementById("rating-full");
+  const savedScoreBadge = document.getElementById("saved-score-badge");
+  const editRatingBtn = document.getElementById("edit-rating-btn");
+  const cancelEditBtn = document.getElementById("cancel-edit-rating-btn");
+
+  const saveBtn = document.getElementById("review-save-btn");
+  const deleteBtn = document.getElementById("rating-delete-btn");
+  const authHint = document.getElementById("comment-auth-hint");
+
+  if (!scale1 || !saveBtn) return;
 
   // ---------- Состояние ----------
-  let isDirty = false; // есть несохранённые изменения
-  let hasSavedRating = false; // есть сохранённая оценка (firebase или localStorage)
+  let isDirty = false; // ползунки изменены, но не сохранены
+  let hasSavedRating = false; // у пользователя есть сохранённая оценка
+  let isEditing = false; // ползунки развёрнуты для правки
   let isSaving = false;
-  let lastLoadedRating = null; // последняя загруженная оценка (для сохранения createdAt)
+  let lastLoadedRating = null;
+  let currentUser = firebase.auth().currentUser;
+
+  firebase.auth().onAuthStateChanged((user) => {
+    currentUser = user;
+    updateAuthState();
+    // Если гость — оценка идёт в localStorage, метку сохраним
+    if (!user && hasSavedRating) {
+      // hasSavedRating в localStorage валиден, оставляем как есть
+    }
+  });
+
+  // ---------- Расчёт итоговой оценки ----------
+  function computeTotal(s1, s2, s3, s4, s5, m) {
+    const avgBase = (s1 + s2 + s3 + s4 + s5) / 5;
+    const diff = m - avgBase;
+    let additionalWeight = 0;
+    if (diff >= 0) {
+      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
+      const part2 = (0.5 * Math.pow(m, 2) + 50) / 100;
+      additionalWeight = part1 * part2;
+    } else {
+      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
+      const part2 = (-0.5 * Math.pow(m, 2) + 100) / 100;
+      additionalWeight = part1 * part2;
+    }
+    return Math.round((avgBase + additionalWeight) * 10) / 10;
+  }
+
+  function computeTotalFromData(data) {
+    return computeTotal(data.s1, data.s2, data.s3, data.s4, data.s5, data.m);
+  }
 
   // ---------- Визуал ползунков ----------
   function updateRangeBackground(range, startColor, endColor) {
@@ -214,24 +262,26 @@ function initRatingSystem(filmId) {
     range.style.background = `linear-gradient(to right, ${startColor} 0%, ${endColor} ${percent}%, #e2e8f0 ${percent}%, #e2e8f0 100%)`;
   }
 
-  const colorPairs = [
-    { max: 3, bg: "#ef4444", border: "#b91c1c" },
-    { max: 5, bg: "#f87171", border: "#b91c1c" },
-    { max: 7, bg: "#fde047", border: "#eab308" },
-    { max: 8.5, bg: "#86efac", border: "#22c55e" },
-    { max: 10, bg: "#22c55e", border: "#16a34a" },
-    { max: Infinity, bg: "#8b5cf6", border: "#6b21a8" },
-  ];
-
   function setScoreColor(score, element) {
-    const pair =
-      colorPairs.find((p) => score < p.max) ||
-      colorPairs[colorPairs.length - 1];
+    const pair = getScoreColor(score);
     element.style.backgroundColor = pair.bg;
     element.style.borderColor = pair.border;
+    element.style.color = pair.text;
   }
 
-  // ---------- Обновление UI расчёта ----------
+  // ---------- Текстовый tooltip с разбивкой ----------
+  function formatRatingTooltip(data) {
+    return [
+      `Сценарий: ${data.s1}`,
+      `Режиссура: ${data.s2}`,
+      `Визуал + музыка: ${data.s3}`,
+      `Актёрский состав: ${data.s4}`,
+      `Хорош в рамках жанра: ${data.s5}`,
+      `Общее впечатление: ${data.m}`,
+    ].join("\n");
+  }
+
+  // ---------- Обновление UI ползунков ----------
   function updateUI() {
     const s1 = parseFloat(scale1.value);
     const s2 = parseFloat(scale2.value);
@@ -254,35 +304,56 @@ function initRatingSystem(filmId) {
     updateRangeBackground(scale5, "#3498db", "#9b59b6");
     updateRangeBackground(subj, "#9b59b6", "#d8b4ff");
 
-    const avgBase = (s1 + s2 + s3 + s4 + s5) / 5;
-    const diff = m - avgBase;
+    const total = computeTotal(s1, s2, s3, s4, s5, m);
+    totalSpan.textContent = total;
+    setScoreColor(total, totalSpan);
 
-    let additionalWeight = 0;
-    if (diff >= 0) {
-      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
-      const part2 = (0.5 * Math.pow(m, 2) + 50) / 100;
-      additionalWeight = part1 * part2;
-    } else {
-      const part1 = (diff * (-0.2 * Math.pow(diff, 2) + 50)) / 100;
-      const part2 = (-0.5 * Math.pow(m, 2) + 100) / 100;
-      additionalWeight = part1 * part2;
+    if (savedScoreBadge) {
+      savedScoreBadge.textContent = total;
     }
 
-    const total = avgBase + additionalWeight;
-    const roundedTotal = Math.round(total * 10) / 10;
-    totalSpan.textContent = roundedTotal;
-    setScoreColor(roundedTotal, totalSpan);
+    // Tooltip с разбивкой по критериям — и на итоговом бейдже, и на свёрнутой карточке
+    const breakdown = formatRatingTooltip({ s1, s2, s3, s4, s5, m });
+    if (savedScoreBadge) {
+      savedScoreBadge.textContent = total;
+      savedScoreBadge.dataset.tooltip = breakdown;
+      savedScoreBadge.classList.add("has-tooltip");
+      setScoreColor(total, savedScoreBadge);
+    }
+    if (totalSpan) {
+      totalSpan.dataset.tooltip = breakdown;
+      totalSpan.classList.add("has-tooltip");
+    }
   }
 
-  // ---------- Состояние кнопки ----------
+  // ---------- Состояние «свёрнуто / развёрнуто» ----------
+  function updateRatingView() {
+    if (!ratingSummary || !ratingFull) return;
+
+    const showSummary = hasSavedRating && !isEditing;
+
+    if (showSummary) {
+      ratingSummary.style.display = "flex";
+      ratingFull.style.display = "none";
+      if (cancelEditBtn) cancelEditBtn.style.display = "none";
+    } else {
+      ratingSummary.style.display = "none";
+      ratingFull.style.display = "block";
+      if (cancelEditBtn) {
+        cancelEditBtn.style.display =
+          isEditing && hasSavedRating ? "inline-flex" : "none";
+      }
+    }
+  }
+
+  // ---------- Текст и состояние кнопки ----------
   function updateSaveButton() {
     if (!saveBtn) return;
-    saveBtn.classList.remove("dirty", "saved");
+    saveBtn.classList.remove("ready", "saved-pulse");
     saveBtn.disabled = false;
 
-    // Ссылку «Удалить оценку» показываем только если есть сохранённая оценка
-    if (deleteWrapper) {
-      deleteWrapper.style.display = hasSavedRating ? "block" : "none";
+    if (deleteBtn) {
+      deleteBtn.style.display = hasSavedRating ? "inline-flex" : "none";
     }
 
     if (isSaving) {
@@ -292,22 +363,33 @@ function initRatingSystem(filmId) {
       return;
     }
 
-    if (isDirty) {
-      if (hasSavedRating) {
-        saveBtn.textContent = "Обновить оценку";
-        saveBtn.classList.add("dirty");
-      } else {
-        saveBtn.textContent = "Оценить фильм";
-      }
+    const commentText = ((commentInput && commentInput.value) || "").trim();
+    const hasComment = currentUser && commentText.length > 0;
+    const willSaveRating = isDirty;
+
+    // --- Выбор текста ---
+    let text;
+    if (willSaveRating && hasComment) {
+      text = hasSavedRating
+        ? "Обновить оценку и отправить комментарий"
+        : "Сохранить оценку и комментарий";
+    } else if (willSaveRating) {
+      text = hasSavedRating
+        ? "Обновить оценку"
+        : "Сохранить оценку без комментария";
+    } else if (hasComment) {
+      text = "Отправить комментарий";
     } else {
-      if (hasSavedRating) {
-        saveBtn.innerHTML =
-          '<span style="font-weight: 400; opacity: 0.7;">✓</span>&nbsp; Оценка сохранена';
-        saveBtn.classList.add("saved");
-        saveBtn.disabled = true;
-      } else {
-        saveBtn.textContent = "Оценить фильм";
-      }
+      text = "Сохранить отзыв";
+    }
+
+    saveBtn.textContent = text;
+
+    if (willSaveRating || hasComment) {
+      saveBtn.classList.add("ready");
+      saveBtn.disabled = false;
+    } else {
+      saveBtn.disabled = true;
     }
   }
 
@@ -316,10 +398,25 @@ function initRatingSystem(filmId) {
     updateSaveButton();
   }
 
-  // ---------- Сбор данных ----------
+  // ---------- Гость/юзер ----------
+  function updateAuthState() {
+    if (!commentInput) return;
+    if (currentUser) {
+      commentInput.disabled = false;
+      commentInput.placeholder =
+        "Поделитесь мыслями о фильме, шуткой или запоминающейся фразой...";
+      if (authHint) authHint.style.display = "none";
+    } else {
+      commentInput.disabled = true;
+      commentInput.value = "";
+      commentInput.placeholder = "Войдите, чтобы оставить комментарий";
+      if (authHint) authHint.style.display = "block";
+    }
+    updateSaveButton();
+  }
+
+  // ---------- Сбор данных оценки ----------
   function collectRatingData() {
-    // Если оценка уже была сохранена — обновляем updatedAt.
-    // Если сохраняем впервые — ставим и createdAt, и updatedAt.
     const now = Date.now();
     const data = {
       s1: parseFloat(scale1.value),
@@ -333,7 +430,6 @@ function initRatingSystem(filmId) {
     if (!hasSavedRating) {
       data.createdAt = now;
     } else {
-      // Сохраняем существующий createdAt, если он есть
       const existing = lastLoadedRating || {};
       data.createdAt = existing.createdAt || now;
     }
@@ -341,44 +437,100 @@ function initRatingSystem(filmId) {
   }
 
   // ---------- Сохранение ----------
-  async function saveRating() {
+  async function saveReview() {
     if (isSaving) return;
-    // Если уже сохранено и пользователь ничего не менял — не сохраняем повторно.
-    // Если не сохранено — сохраняем, даже если isDirty = false (дефолтные 5 — валидная оценка).
-    if (!isDirty && hasSavedRating) return;
+
+    const commentText = ((commentInput && commentInput.value) || "").trim();
+    const willSaveRating = isDirty;
+    const willSaveComment = currentUser && commentText.length > 0;
+
+    if (!willSaveRating && !willSaveComment) return;
+
+    if (commentText.length > 1000) {
+      alert("Комментарий слишком длинный (макс. 1000 символов)");
+      return;
+    }
+
     isSaving = true;
     updateSaveButton();
 
-    const ratingData = collectRatingData();
-    const user = firebase.auth().currentUser;
-
     try {
-      if (user) {
-        await saveRatingToFirebase(filmId, ratingData);
-      } else {
-        localStorage.setItem(
-          `filmRating_${filmId}`,
-          JSON.stringify(ratingData),
-        );
+      // 1. Оценка
+      if (willSaveRating) {
+        const ratingData = collectRatingData();
+        if (currentUser) {
+          await saveRatingToFirebase(filmId, ratingData);
+        } else {
+          localStorage.setItem(
+            `filmRating_${filmId}`,
+            JSON.stringify(ratingData),
+          );
+        }
+        isDirty = false;
+        hasSavedRating = true;
+        isEditing = false;
+        lastLoadedRating = ratingData;
       }
-      isDirty = false;
-      hasSavedRating = true;
-      isSaving = false;
-      updateSaveButton();
 
-      // Небольшой визуальный акцент «сохранено» — короткая пульсация
-      if (saveBtn) {
-        saveBtn.style.transform = "scale(1.05)";
-        setTimeout(() => {
-          saveBtn.style.transform = "";
-        }, 200);
+      // 2. Запись в ленту — комментарий и/или оценка
+      if (willSaveComment || willSaveRating) {
+        const entry = {
+          filmId: filmId,
+          uid: currentUser.uid,
+          uidEmail: currentUser.email || "",
+          createdAt: Date.now(),
+        };
+
+        if (willSaveComment) {
+          entry.text = commentText;
+        }
+
+        // Прикрепляем снимок оценки — либо когда сохраняем оценку сейчас,
+        // либо когда оценка уже была и пользователь просто пишет комментарий
+        // (в этом случае берём последнее сохранённое значение).
+        if (willSaveRating) {
+          const snap = collectRatingData();
+          entry.ratingSnapshot = {
+            s1: snap.s1,
+            s2: snap.s2,
+            s3: snap.s3,
+            s4: snap.s4,
+            s5: snap.s5,
+            m: snap.m,
+            total: computeTotal(
+              snap.s1,
+              snap.s2,
+              snap.s3,
+              snap.s4,
+              snap.s5,
+              snap.m,
+            ),
+            savedAt: snap.updatedAt,
+          };
+        }
+
+        await firebase.database().ref("comments").push(entry);
+        if (willSaveComment) commentInput.value = "";
       }
-    } catch (e) {
-      console.error("Ошибка сохранения оценки:", e);
+
+      // 3. Обновляем интерфейс — сворачиваем ползунки если оценка сохранена
+      updateRatingView();
+      updateUI();
+
+      // 4. Визуальный акцент «сохранено»
       isSaving = false;
-      // Оставляем кнопку в состоянии «можно попробовать снова»
+      saveBtn.textContent = "✓ Сохранено";
+      saveBtn.disabled = true;
+      saveBtn.classList.add("saved-pulse");
+      setTimeout(() => {
+        saveBtn.classList.remove("saved-pulse");
+        updateSaveButton();
+      }, 1500);
+    } catch (e) {
+      console.error("Ошибка сохранения отзыва:", e);
+      isSaving = false;
       updateSaveButton();
-      alert("Не удалось сохранить оценку: " + e.message);
+      alert("Не удалось сохранить: " + e.message);
     }
   }
 
@@ -395,7 +547,7 @@ function initRatingSystem(filmId) {
         try {
           data = JSON.parse(saved);
         } catch (e) {
-          console.warn("Не удалось распарсить сохранённую оценку:", e);
+          console.warn("Не удалось распарсить оценку:", e);
         }
       }
     }
@@ -412,26 +564,24 @@ function initRatingSystem(filmId) {
     } else {
       hasSavedRating = false;
       lastLoadedRating = null;
+      // Дефолтные значения
+      scale1.value = 5;
+      scale2.value = 5;
+      scale3.value = 5;
+      scale4.value = 5;
+      scale5.value = 5;
+      subj.value = 5;
     }
 
     isDirty = false;
+    isEditing = false;
     isSaving = false;
     updateUI();
+    updateRatingView();
     updateSaveButton();
   }
 
-  currentLoadRating = loadRating;
-  currentFilmIdForReload = filmId;
-
-  // ---------- Ползунки: только UI, без сохранения ----------
-  [scale1, scale2, scale3, scale4, scale5, subj].forEach((el) => {
-    el.addEventListener("input", () => {
-      markDirty();
-      updateUI();
-    });
-  });
-
-  // ---------- Сброс ползунков в дефолт ----------
+  // ---------- Сброс к дефолту ----------
   function resetSlidersToDefault() {
     scale1.value = 5;
     scale2.value = 5;
@@ -456,8 +606,11 @@ function initRatingSystem(filmId) {
       }
       hasSavedRating = false;
       isDirty = false;
+      isEditing = false;
+      lastLoadedRating = null;
       resetSlidersToDefault();
       updateUI();
+      updateRatingView();
       updateSaveButton();
     } catch (e) {
       console.error("Ошибка удаления оценки:", e);
@@ -465,17 +618,54 @@ function initRatingSystem(filmId) {
     }
   }
 
-  // ---------- Кнопка сохранения ----------
-  if (saveBtn) {
-    saveBtn.addEventListener("click", saveRating);
+  // ---------- Развернуть ползунки (правка) ----------
+  function startEditingRating() {
+    isEditing = true;
+    updateRatingView();
+    updateSaveButton();
   }
 
-  // ---------- Кнопка удаления ----------
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", deleteRating);
+  // ---------- Отменить правку ----------
+  function cancelEditingRating() {
+    if (!lastLoadedRating) return;
+    // Возвращаем ползунки к сохранённой оценке
+    scale1.value = lastLoadedRating.s1;
+    scale2.value = lastLoadedRating.s2;
+    scale3.value = lastLoadedRating.s3;
+    scale4.value = lastLoadedRating.s4;
+    scale5.value = lastLoadedRating.s5;
+    subj.value = lastLoadedRating.m;
+    isDirty = false;
+    isEditing = false;
+    updateUI();
+    updateRatingView();
+    updateSaveButton();
   }
 
-  // ---------- Первоначальная загрузка ----------
+  // ---------- Обработчики ----------
+  [scale1, scale2, scale3, scale4, scale5, subj].forEach((el) => {
+    el.addEventListener("input", () => {
+      markDirty();
+      updateUI();
+    });
+  });
+
+  if (commentInput) {
+    commentInput.addEventListener("input", updateSaveButton);
+  }
+
+  if (saveBtn) saveBtn.addEventListener("click", saveReview);
+  if (deleteBtn) deleteBtn.addEventListener("click", deleteRating);
+  if (editRatingBtn)
+    editRatingBtn.addEventListener("click", startEditingRating);
+  if (cancelEditBtn)
+    cancelEditBtn.addEventListener("click", cancelEditingRating);
+
+  // ---------- Старт ----------
+  currentLoadRating = loadRating;
+  currentFilmIdForReload = filmId;
+
+  updateAuthState();
   loadRating();
 }
 

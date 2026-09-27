@@ -666,3 +666,19 @@ async function deleteMarathon(marathonId) {
     throw new Error("Только создатель может удалить марафон");
   await firebase.database().ref(`marathons/${marathonId}`).remove();
 }
+
+// ---------- Цвета для бейджей с оценками ----------
+// Используется в film.js (итоговый бейдж, свёрнутая карточка) и comments.js (плашки)
+function getScoreColor(score) {
+  const colorPairs = [
+    { max: 3, bg: "#ef4444", border: "#b91c1c", text: "#ffffff" },
+    { max: 5, bg: "#f87171", border: "#b91c1c", text: "#ffffff" },
+    { max: 7, bg: "#fde047", border: "#eab308", text: "#1e293b" },
+    { max: 8.5, bg: "#86efac", border: "#22c55e", text: "#1e293b" },
+    { max: 10, bg: "#22c55e", border: "#16a34a", text: "#ffffff" },
+    { max: Infinity, bg: "#8b5cf6", border: "#6b21a8", text: "#ffffff" },
+  ];
+  return (
+    colorPairs.find((p) => score < p.max) || colorPairs[colorPairs.length - 1]
+  );
+}
