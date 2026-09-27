@@ -16,7 +16,6 @@ function toggleExcluded(filmId) {
 }
 
 // ---------- Рендер доступных фильмов ----------
-// ---------- Рендер доступных фильмов ----------
 function renderAvailableFilms() {
   const container = document.getElementById("films-container");
   if (!container) return;
@@ -25,8 +24,7 @@ function renderAvailableFilms() {
 
   // Текстовый поиск
   if (availableSearchQuery.trim()) {
-    const q = availableSearchQuery.trim().toLowerCase();
-    available = available.filter((f) => f.title.toLowerCase().includes(q));
+    available = available.filter((f) => matchesSearch(f, availableSearchQuery));
   }
 
   if (available.length === 0) {
@@ -260,7 +258,7 @@ function renderPoolModalList() {
   }
 
   if (query) {
-    available = available.filter((f) => f.title.toLowerCase().includes(query));
+    available = available.filter((f) => matchesSearch(f, query));
   }
 
   if (available.length === 0) {

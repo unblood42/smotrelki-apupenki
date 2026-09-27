@@ -285,9 +285,7 @@ searchInput.addEventListener("input", function () {
     return;
   }
   const matches = allFilms.filter(
-    (f) =>
-      f.title.toLowerCase().includes(query) &&
-      !selectedFilms.some((s) => s.id === f.id),
+    (f) => matchesSearch(f, query) && !selectedFilms.some((s) => s.id === f.id),
   );
   if (matches.length === 0) {
     suggestionsContainer.innerHTML =

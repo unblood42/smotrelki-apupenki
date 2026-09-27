@@ -182,7 +182,7 @@ filmSearchInput.addEventListener("input", function () {
   }
   const existingIds = Object.keys(marathonData.films || {}).map(Number);
   const matches = allFilms.filter(
-    (f) => f.title.toLowerCase().includes(query) && !existingIds.includes(f.id),
+    (f) => matchesSearch(f, query) && !existingIds.includes(f.id),
   );
   if (matches.length === 0) {
     suggestionsContainer.innerHTML =
@@ -266,9 +266,7 @@ document.getElementById("add-film-btn").addEventListener("click", function () {
   }
 
   // Если подсказки нет — ищем сами
-  const found = allFilms.find((f) =>
-    f.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const found = allFilms.find((f) => matchesSearch(f, query));
   if (!found) {
     alert("Фильм не найден");
     return;
@@ -333,10 +331,3 @@ async function init() {
 }
 
 init();
-
-init();
-
-// Загружаем фильмы, потом инициализируем марафон
-fetchAndSetFilms().then(() => {
-  init(); // init теперь будет вызываться после загрузки фильмов
-});

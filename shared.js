@@ -178,15 +178,23 @@ function saveExcluded(excludedSet) {
   }
 }
 
-// ---------- Фильтрация и сортировка (общая) ----------
+// ---------- Универсальный поиск по фильму ----------
+// Ищет в title, originalTitle, director (case-insensitive).
+// Возвращает true, если запрос пустой ИЛИ найдено совпадение.
+function matchesSearch(film, query) {
+  if (!query) return true;
+  const q = String(query).toLowerCase().trim();
+  if (!q) return true;
+
+  const fields = [film.title, film.originalTitle, film.director];
+  return fields.some((f) => f && String(f).toLowerCase().includes(q));
+}
+
 function applyFilters() {
   let filtered = allFilms;
 
   if (searchQuery.trim() !== "") {
-    const query = searchQuery.toLowerCase().trim();
-    filtered = filtered.filter((film) =>
-      film.title.toLowerCase().includes(query),
-    );
+    filtered = filtered.filter((film) => matchesSearch(film, searchQuery));
   }
 
   if (yearFrom !== "") {
