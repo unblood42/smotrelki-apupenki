@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
+  // Сразу рисуем скелетоны — пока грузим данные
+  renderSkeletons(container, 12);
+
   loadAllFilmsFromFirebase()
     .then(async (films) => {
       allFilms = films;
@@ -189,6 +192,27 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+// ---------- Скелетоны загрузки ----------
+function renderSkeletons(container, count = 12) {
+  if (!container) return;
+  const skeletonHtml = Array.from({ length: count })
+    .map(
+      () => `
+      <div class="skeleton-card">
+        <div class="skeleton-poster"></div>
+        <div class="skeleton-info">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-year"></div>
+          <div class="skeleton-line skeleton-genres"></div>
+          <div class="skeleton-line skeleton-meta"></div>
+        </div>
+      </div>
+    `,
+    )
+    .join("");
+  container.innerHTML = skeletonHtml;
+}
 
 // ---------- Рендер карточек ----------
 function renderFilmCards() {

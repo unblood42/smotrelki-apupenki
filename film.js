@@ -29,6 +29,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
+  // Скелетон — пока грузим данные
+  renderFilmDetailSkeleton(container);
+
   loadAllFilmsFromFirebase()
     .then(async (films) => {
       const film = films.find((f) => f.id == filmId);
@@ -40,9 +43,17 @@ document.addEventListener("DOMContentLoaded", function () {
       let filmData = getMovieDataFromCache(film.title, film.year);
 
       if (!filmData) {
-        container.innerHTML =
-          '<p style="text-align: center;">Загрузка данных о фильме...</p>';
-        filmData = await getMovieDataFromTMDB(film);
+        // Скелетон уже на экране — просто ждём TMDB.
+        // Не ждём вечно: 8 секунд — и рендерим, что есть.
+        filmData = await Promise.race([
+          getMovieDataFromTMDB(film),
+          new Promise((resolve) =>
+            setTimeout(() => {
+              warn("TMDB timeout, используем данные из films.json");
+              resolve(null);
+            }, 8000),
+          ),
+        ]);
       }
 
       const enrichedFilm = {
@@ -67,6 +78,69 @@ document.addEventListener("DOMContentLoaded", function () {
         '<p style="color: red;">Не удалось загрузить информацию о фильме</p>';
     });
 });
+
+// ---------- Скелетон карточки фильма ----------
+function renderFilmDetailSkeleton(container) {
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="film-detail-card film-detail-skeleton">
+      <div class="film-detail-poster">
+        <div class="skeleton-poster" style="aspect-ratio: 2/3; border-radius: 8px;"></div>
+      </div>
+      <div class="film-detail-info">
+        <div class="skeleton-line skeleton-title" style="height: 26px; width: 70%; margin-bottom: 20px;"></div>
+        <div class="skeleton-line" style="height: 18px; width: 40%; margin-bottom: 15px;"></div>
+        <div class="skeleton-line" style="height: 14px; width: 30%; margin-bottom: 20px;"></div>
+        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+          <div class="skeleton-line" style="height: 22px; width: 70px; border-radius: 5px;"></div>
+          <div class="skeleton-line" style="height: 22px; width: 80px; border-radius: 5px;"></div>
+          <div class="skeleton-line" style="height: 22px; width: 60px; border-radius: 5px;"></div>
+        </div>
+        <div class="skeleton-line" style="height: 16px; width: 50%; margin-bottom: 10px;"></div>
+        <div class="skeleton-line" style="height: 14px; width: 100%; margin-bottom: 8px;"></div>
+        <div class="skeleton-line" style="height: 14px; width: 95%; margin-bottom: 8px;"></div>
+        <div class="skeleton-line" style="height: 14px; width: 88%; margin-bottom: 8px;"></div>
+        <div class="skeleton-line" style="height: 14px; width: 60%;"></div>
+      </div>
+    </div>
+
+    <div class="review-section" style="opacity: 0.5; pointer-events: none;">
+      <div class="skeleton-line skeleton-title" style="height: 22px; width: 180px; margin-bottom: 20px;"></div>
+      <div class="rating-scales">
+        ${Array.from({ length: 6 })
+          .map(
+            () => `
+          <div class="scale-item scale-base" style="border-color: #e2e8f0; background: #f8fafc;">
+            <div class="skeleton-line" style="height: 16px; width: 60%; margin-bottom: 10px;"></div>
+            <div class="skeleton-line" style="height: 8px; width: 100%; border-radius: 4px;"></div>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+      <div class="skeleton-line" style="height: 60px; width: 100%; border-radius: 16px; margin-top: 20px;"></div>
+    </div>
+
+    <div class="comments-section" style="opacity: 0.5; pointer-events: none;">
+      <div class="skeleton-line skeleton-title" style="height: 22px; width: 200px; margin-bottom: 20px;"></div>
+      ${Array.from({ length: 2 })
+        .map(
+          () => `
+        <div class="comment-item">
+          <div class="skeleton-avatar"></div>
+          <div class="comment-body" style="flex: 1;">
+            <div class="skeleton-line" style="height: 14px; width: 150px; margin-bottom: 8px;"></div>
+            <div class="skeleton-line" style="height: 12px; width: 100%; margin-bottom: 6px;"></div>
+            <div class="skeleton-line" style="height: 12px; width: 85%;"></div>
+          </div>
+        </div>
+      `,
+        )
+        .join("")}
+    </div>
+  `;
+}
 
 function renderFilmDetail(film, container) {
   const genresHtml = film.genres

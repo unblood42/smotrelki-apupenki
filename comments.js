@@ -23,6 +23,27 @@ function initCommentsForFilm(filmId) {
     commentsRef.off("value", commentsListener);
   }
 
+  // Скелетон пока грузятся комментарии
+  const listContainer = document.getElementById("comments-list");
+  if (listContainer) {
+    listContainer.innerHTML = `
+      ${Array.from({ length: 2 })
+        .map(
+          () => `
+        <div class="comment-item">
+          <div class="skeleton-avatar"></div>
+          <div class="comment-body" style="flex: 1;">
+            <div class="skeleton-line" style="height: 14px; width: 150px; margin-bottom: 8px;"></div>
+            <div class="skeleton-line" style="height: 12px; width: 100%; margin-bottom: 6px;"></div>
+            <div class="skeleton-line" style="height: 12px; width: 85%;"></div>
+          </div>
+        </div>
+      `,
+        )
+        .join("")}
+    `;
+  }
+
   commentsRef = firebase
     .database()
     .ref("comments")

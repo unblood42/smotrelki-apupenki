@@ -2322,6 +2322,125 @@ body {
   text-decoration: underline;
 }
 
+/* ===== Скелетоны загрузки ===== */
+.skeleton-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.skeleton-poster {
+  aspect-ratio: 2 / 3;
+  background: #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-info {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-title {
+  height: 16px;
+  width: 80%;
+  margin-bottom: 4px;
+}
+
+.skeleton-year {
+  height: 12px;
+  width: 40%;
+}
+
+.skeleton-genres {
+  height: 12px;
+  width: 65%;
+  margin-top: 8px;
+}
+
+.skeleton-meta {
+  height: 12px;
+  width: 55%;
+  margin-top: auto;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-avatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+
+
+
+
 @media (max-width: 600px) {
   .music-fallback {
     flex-direction: column;
