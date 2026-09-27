@@ -2877,6 +2877,244 @@ body {
   transform: translateY(1px);
 }
 
+/* ===== Свежие отзывы на главной ===== */
+.recent-reviews {
+  max-width: 1200px;
+  margin: 20px auto 10px;
+  padding: 0 20px;
+}
+
+.recent-reviews-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 14px;
+}
+
+.recent-reviews-header h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.recent-reviews-header h2 i {
+  color: #9b59b6;
+  font-size: 1.1rem;
+}
+
+.recent-reviews-all {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+
+.recent-reviews-all:hover {
+  color: #9b59b6;
+  background: rgba(155, 89, 182, 0.08);
+}
+
+.recent-reviews-all i {
+  font-size: 0.8rem;
+}
+
+.recent-reviews-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 2px 14px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.recent-reviews-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.recent-reviews-track::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.recent-reviews-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-card {
+  flex: 0 0 340px;
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.recent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.recent-card-poster {
+  flex: 0 0 90px;
+  width: 90px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e2e8f0;
+  align-self: stretch;
+}
+
+.recent-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recent-card-poster-ph {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  min-height: 130px;
+}
+
+.recent-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recent-card-film {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.recent-card-film-title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  word-break: break-word;
+}
+
+.recent-card-film-year {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.recent-card-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.recent-card-avatar {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3498db, #9b59b6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.6rem;
+  letter-spacing: 0.3px;
+}
+
+.recent-card-date {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.recent-card-text {
+  color: #334155;
+  font-size: 0.87rem;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  line-clamp: 4;
+  word-break: break-word;
+  margin-top: 2px;
+}
+
+.recent-card-text-muted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+
+
+
+
+
+
+
+
+@media (max-width: 600px) {
+  .recent-card {
+    flex: 0 0 290px;
+    padding: 12px;
+    gap: 10px;
+  }
+  .recent-card-poster {
+    flex: 0 0 72px;
+    width: 72px;
+  }
+  .recent-card-poster-ph {
+    min-height: 105px;
+  }
+  .recent-reviews-header h2 {
+    font-size: 1.1rem;
+  }
+  .recent-reviews-all {
+    font-size: 0.83rem;
+    padding: 5px 8px;
+  }
+}
+
 @media (max-width: 600px) {
   .feed-item {
     padding: 14px 16px;
