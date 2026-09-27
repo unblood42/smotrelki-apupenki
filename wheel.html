@@ -24,6 +24,66 @@
       </nav>
     </header>
 
+    <!-- Модалка «Собрать пул фильмов» -->
+    <div id="pool-modal" class="pool-modal" style="display: none">
+      <div class="pool-modal-window">
+        <div class="pool-modal-header">
+          <h3>Собрать пул фильмов</h3>
+          <p>
+            Выберите до 50 фильмов для колеса. Можно искать и добавить случайно.
+          </p>
+        </div>
+
+        <div class="pool-modal-toolbar">
+          <div class="pool-modal-search">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              id="pool-search-input"
+              placeholder="Поиск фильма..."
+            />
+          </div>
+          <label
+            class="pool-modal-only-selected"
+            title="Показать только выбранные"
+          >
+            <input type="checkbox" id="pool-only-selected" />
+            Только выбранные
+          </label>
+          <button
+            class="filter-btn"
+            id="pool-random-btn"
+            style="background: #9b59b6"
+          >
+            <i class="fas fa-dice"></i> Случайные
+          </button>
+        </div>
+
+        <div class="pool-modal-list" id="pool-modal-list"></div>
+
+        <div class="pool-modal-footer">
+          <div class="pool-modal-counter">
+            Выбрано: <strong id="pool-selected-count">0</strong> / 50
+          </div>
+          <div class="pool-modal-actions">
+            <button class="filter-btn reset-btn" id="pool-clear-btn">
+              Очистить
+            </button>
+            <button class="filter-btn reset-btn" id="pool-cancel-btn">
+              Отмена
+            </button>
+            <button
+              class="filter-btn"
+              id="pool-save-btn"
+              style="background: #22c55e"
+            >
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <main>
       <!-- Фильтры (аналогично главной, но с добавлением фильтра по длительности) -->
       <div class="filters">
@@ -103,19 +163,62 @@
         <!-- Левая часть: колесо и доступные фильмы -->
         <div class="wheel-left">
           <div class="wheel-display">
-            <h2>Случайный фильм</h2>
+            <div class="wheel-pool-controls">
+              <div class="wheel-pool-tabs">
+                <button class="wheel-pool-tab active" data-mode="all">
+                  Все фильмы
+                </button>
+                <button class="wheel-pool-tab" data-mode="custom">
+                  Свой пул<span
+                    class="wheel-pool-count"
+                    id="wheel-pool-count"
+                  ></span>
+                </button>
+              </div>
+              <button
+                class="wheel-pool-edit"
+                id="wheel-pool-edit"
+                title="Настроить пул"
+                style="display: none"
+              >
+                <i class="fas fa-pen"></i>
+              </button>
+            </div>
 
-            <div class="wheel-ring-container" id="wheel-ring-container">
-              <div class="wheel-ring" id="wheel-ring"></div>
-              <div class="wheel-pointer">
-                <div class="wheel-pointer-triangle"></div>
+            <div class="wheel-pool-status" id="wheel-pool-status">
+              Загрузка...
+            </div>
+
+            <div class="wheel-stage" id="wheel-stage">
+              <!-- Кольцо (для пула ≤ 12) -->
+              <div
+                class="wheel-ring-container"
+                id="wheel-ring-container"
+                style="display: none"
+              >
+                <div class="wheel-ring" id="wheel-ring"></div>
+                <div class="wheel-pointer">
+                  <div class="wheel-pointer-triangle"></div>
+                </div>
+                <div class="wheel-ring-center">
+                  <i class="fas fa-film"></i>
+                </div>
+                <div class="wheel-ring-loading" id="wheel-ring-loading">
+                  <i class="fas fa-spinner fa-spin" style="font-size: 2rem"></i>
+                  <span>Загрузка фильмов...</span>
+                </div>
               </div>
-              <div class="wheel-ring-center">
-                <i class="fas fa-film"></i>
-              </div>
-              <div class="wheel-ring-loading" id="wheel-ring-loading">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem"></i>
-                <span>Загрузка фильмов...</span>
+
+              <!-- Рулетка (для пула > 12) -->
+              <div
+                class="wheel-reel-container"
+                id="wheel-reel-container"
+                style="display: none"
+              >
+                <div class="wheel-reel" id="wheel-reel"></div>
+                <div class="wheel-reel-fade left"></div>
+                <div class="wheel-reel-fade right"></div>
+                <div class="wheel-reel-center-marker"></div>
               </div>
             </div>
 
@@ -126,7 +229,7 @@
             </button>
 
             <div class="spin-duration-settings">
-              <label for="spin-duration-min" class="spin-duration-label">
+              <label class="spin-duration-label">
                 <i class="fas fa-hourglass-half"></i>
                 Длительность:
               </label>
@@ -139,7 +242,12 @@
                 step="0.5"
                 value="2"
               />
-              <span class="spin-duration-sep">—</span>
+              <span
+                class="spin-duration-sep"
+                id="spin-duration-sep"
+                style="display: none"
+                >—</span
+              >
               <input
                 type="number"
                 id="spin-duration-max"
@@ -148,14 +256,39 @@
                 max="15"
                 step="0.5"
                 value="2"
+                style="display: none"
               />
               <span class="spin-duration-unit">сек</span>
+              <label
+                class="spin-duration-random-toggle"
+                title="Крутить случайное время в диапазоне"
+              >
+                <input type="checkbox" id="spin-duration-random" />
+                случайно из диапазона
+              </label>
             </div>
           </div>
 
           <!-- Сетка доступных фильмов (с кнопками исключения) -->
           <div class="available-films">
-            <h3>Доступные фильмы (нажмите на 🚫, чтобы исключить)</h3>
+            <div class="available-films-header">
+              <h3>Доступные фильмы (нажмите на 🚫, чтобы исключить)</h3>
+              <div class="available-films-search">
+                <i class="fas fa-search"></i>
+                <input
+                  type="text"
+                  id="available-search-input"
+                  placeholder="Поиск по названию..."
+                />
+                <button
+                  class="available-search-clear"
+                  id="available-search-clear"
+                  aria-label="Очистить"
+                >
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              </div>
+            </div>
             <div class="films-grid" id="films-container"></div>
           </div>
         </div>
@@ -192,8 +325,8 @@
       firebase.initializeApp(firebaseConfig);
     </script>
 
-    <script src="auth.js"></script>
     <script src="shared.js"></script>
+    <script src="auth.js"></script>
     <script src="wheel.js"></script>
   </body>
 </html>
