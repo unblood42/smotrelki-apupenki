@@ -245,6 +245,7 @@ function createFilmCard(film, isFavorite) {
   const safeDirector = escapeHtml(film.director);
   const year = film.year;
   const heartIcon = isFavorite ? "fas fa-heart" : "far fa-heart";
+  const favoriteActiveClass = isFavorite ? " active" : "";
 
   return `
     <a href="film.html?id=${film.id}" class="film-card-link" style="text-decoration: none; color: inherit;">
@@ -263,7 +264,7 @@ function createFilmCard(film, isFavorite) {
                         <span class="film-duration film-rating"><i class="far fa-clock"></i> ${durationText}</span>
                         <span class="film-rating">${ratingText}</span>
                     </div>
-                    <button class="favorite-btn" data-film-id="${film.id}" aria-label="Добавить в избранное">
+                    <button class="favorite-btn${favoriteActiveClass}" data-film-id="${film.id}" aria-label="Добавить в избранное">
                         <i class="${heartIcon}"></i>
                     </button>
                 </div>
