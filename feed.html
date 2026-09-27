@@ -20,18 +20,29 @@
     <header class="header" id="main-header"></header>
 
     <main>
-      <div class="feed-placeholder">
-        <div class="feed-placeholder-icon">
-          <i class="fas fa-stream"></i>
+      <div class="feed-container">
+        <div class="feed-filters">
+          <div class="feed-filter-tabs">
+            <button class="feed-filter-tab active" data-filter="all">
+              Все
+            </button>
+            <button class="feed-filter-tab" data-filter="mine">
+              Только мои
+            </button>
+          </div>
+          <div class="feed-author-filter">
+            <label for="feed-author-select" class="feed-author-label">
+              <i class="fas fa-user"></i> Автор:
+            </label>
+            <select id="feed-author-select">
+              <option value="">Все авторы</option>
+            </select>
+          </div>
         </div>
-        <h2>Лента скоро появится</h2>
-        <p>
-          Здесь будут собираться все оценки и комментарии друзей к фильмам — в
-          одном общем потоке.
-        </p>
-        <a href="index.html" class="filter-btn">
-          <i class="fas fa-arrow-left"></i> На главную
-        </a>
+
+        <div class="feed-list" id="feed-list">
+          <p class="feed-loading">Загрузка...</p>
+        </div>
       </div>
     </main>
 
@@ -58,5 +69,6 @@
 
     <script src="shared.js"></script>
     <script src="auth.js"></script>
+    <script src="feed.js"></script>
   </body>
 </html>
