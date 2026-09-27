@@ -3231,11 +3231,40 @@ body {
   color: #9b59b6;
 }
 
+/* ===== Кнопка «Предложить фильм» ===== */
+#suggest-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+#suggest-btn {
+  background: #9b59b6;
+  font-size: 0.88rem;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+
+#suggest-btn:hover {
+  background: #8e44ad;
+}
 
 
 
 
 
+
+
+
+
+
+@media (max-width: 900px) {
+  #suggest-btn .suggest-btn-text {
+    display: none;
+  }
+  #suggest-btn {
+    padding: 8px 12px;
+  }
+}
 
 @media (max-width: 640px) {
   .rating-breakdown {

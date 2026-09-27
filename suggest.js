@@ -207,15 +207,13 @@ function updateSuggestButton(user) {
   suggestCurrentUser = user;
   if (!document.getElementById("films-container")) return;
 
-  const nav = document.querySelector(".header nav");
-  if (!nav) return;
+  const slot = document.getElementById("suggest-slot");
+  if (!slot) return;
 
   const existing = document.getElementById("suggest-btn");
   const isAdmin =
     user && typeof ADMIN_UID !== "undefined" && user.uid === ADMIN_UID;
 
-  // Кнопку показываем только обычным залогиненным юзерам.
-  // У админа уже есть admin.html — предложка ему не нужна.
   const shouldShow = !!user && !isAdmin;
 
   if (shouldShow && !existing) {
@@ -223,12 +221,11 @@ function updateSuggestButton(user) {
     btn.id = "suggest-btn";
     btn.className = "filter-btn";
     btn.style.background = "#9b59b6";
-    btn.innerHTML = '<i class="fas fa-lightbulb"></i> Предложить фильм';
+    btn.title = "Предложить фильм";
+    btn.innerHTML =
+      '<i class="fas fa-lightbulb"></i> <span class="suggest-btn-text">Предложить фильм</span>';
     btn.addEventListener("click", openSuggestModal);
-
-    const emailSpan = document.getElementById("user-email");
-    if (emailSpan) nav.insertBefore(btn, emailSpan);
-    else nav.appendChild(btn);
+    slot.appendChild(btn);
 
     updateSuggestBadge();
   } else if (!shouldShow && existing) {

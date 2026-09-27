@@ -598,6 +598,7 @@ function renderHeader() {
       </nav>
 
       <div class="header-account">
+        <span id="suggest-slot"></span>
         <span id="user-email"></span>
         <button id="auth-button" class="filter-btn">Войти</button>
       </div>
