@@ -209,7 +209,7 @@ function renderFriendsRatings(data) {
         <span class="friends-ratings-average-score"
           style="background-color: ${pair.bg}; border-color: ${pair.border}; color: ${pair.text};"
         >${agg.average}</span>
-        <span class="friends-ratings-average-label">средняя оценка друзей</span>
+        <span class="friends-ratings-average-label">Средняя оценка друзей</span>
       </div>
     `;
   }
