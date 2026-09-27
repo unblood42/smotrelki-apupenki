@@ -104,14 +104,23 @@
         <div class="wheel-left">
           <div class="wheel-display">
             <h2>Случайный фильм</h2>
-            <div class="wheel-preview loading" id="wheel-preview">
-              <span id="wheel-title">⏳ Загрузка фильмов...</span>
-              <div class="wheel-poster" id="wheel-poster">
-                <div class="poster-placeholder">
-                  <i class="fas fa-spinner fa-spin"></i>
-                </div>
+
+            <div class="wheel-ring-container" id="wheel-ring-container">
+              <div class="wheel-ring" id="wheel-ring"></div>
+              <div class="wheel-pointer">
+                <div class="wheel-pointer-triangle"></div>
+              </div>
+              <div class="wheel-ring-center">
+                <i class="fas fa-film"></i>
+              </div>
+              <div class="wheel-ring-loading" id="wheel-ring-loading">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem"></i>
+                <span>Загрузка фильмов...</span>
               </div>
             </div>
+
+            <div class="wheel-result" id="wheel-result"></div>
+
             <button class="filter-btn spin-btn" id="spin-button" disabled>
               <i class="fas fa-spinner fa-spin"></i> Загрузка...
             </button>

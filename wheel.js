@@ -1,7 +1,6 @@
 // wheel.js
 
 // ---------- Переключение исключения фильма ----------
-// Использует getExcluded()/saveExcluded() из shared.js — работает и с Firebase, и с localStorage
 function toggleExcluded(filmId) {
   const set = getExcluded();
   if (set.has(filmId)) {
@@ -13,7 +12,7 @@ function toggleExcluded(filmId) {
   excludedFilmIds = set;
   renderAvailableFilms();
   renderExcludedList();
-  resetWheelPreview();
+  refreshWheel();
 }
 
 // ---------- Рендер доступных фильмов ----------
@@ -26,7 +25,6 @@ function renderAvailableFilms() {
     container.innerHTML = '<p class="empty-message">Нет доступных фильмов</p>';
     return;
   }
-
   container.innerHTML = available.map((film) => createFilmCard(film)).join("");
 }
 
@@ -92,97 +90,146 @@ function renderExcludedList() {
   });
 }
 
-// ---------- Пустое состояние колеса ----------
-function resetWheelPreview() {
-  const titleEl = document.getElementById("wheel-title");
-  const posterEl = document.getElementById("wheel-poster");
-  const previewEl = document.getElementById("wheel-preview");
-
-  if (previewEl) {
-    previewEl.classList.remove("loading", "result");
-    previewEl.classList.add("idle");
-  }
-
-  if (titleEl) titleEl.textContent = "🎡 Нажми «Крутить!»";
-  if (posterEl) {
-    posterEl.classList.remove("result-pop");
-    posterEl.innerHTML =
-      '<div class="poster-placeholder"><i class="fas fa-film"></i></div>';
-  }
-
-  // Кнопка возвращается в исходное состояние
-  const spinBtn = document.getElementById("spin-button");
-  if (spinBtn && !spinBtn.disabled) {
-    spinBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Крутить!';
-  }
+// ---------- Активный пул ----------
+function getActivePool() {
+  return filteredFilms.filter((f) => !excludedFilmIds.has(f.id));
 }
 
-// ---------- Переключение колеса в состояние «готов к спину» ----------
-function setWheelReady() {
-  const titleEl = document.getElementById("wheel-title");
-  const posterEl = document.getElementById("wheel-poster");
-  const previewEl = document.getElementById("wheel-preview");
-  const spinBtn = document.getElementById("spin-button");
-
-  if (previewEl) {
-    previewEl.classList.remove("loading", "result");
-    previewEl.classList.add("idle");
+// Перемешивание
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
-
-  if (titleEl) titleEl.textContent = "🎡 Нажми «Крутить!»";
-  if (posterEl) {
-    posterEl.classList.remove("result-pop");
-    posterEl.innerHTML =
-      '<div class="poster-placeholder"><i class="fas fa-film"></i></div>';
-  }
-
-  if (spinBtn) {
-    spinBtn.disabled = false;
-    spinBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Крутить!';
-  }
+  return a;
 }
 
-// ---------- Отрисовка превью в процессе анимации ----------
-function updateWheelPreview(film, isFinal = false) {
-  const titleEl = document.getElementById("wheel-title");
-  const posterEl = document.getElementById("wheel-poster");
-  const previewEl = document.getElementById("wheel-preview");
+// ---------- Состояние колеса ----------
+let currentRotation = 0;
+let wheelPool = [];
+let isSpinning = false;
+const MAX_RING_CARDS = 12;
 
-  if (titleEl) titleEl.textContent = `${film.title} (${film.year})`;
+// ---------- Рендер кольца ----------
+function renderWheelRing(pool) {
+  const ring = document.getElementById("wheel-ring");
+  const container = document.getElementById("wheel-ring-container");
+  const loading = document.getElementById("wheel-ring-loading");
+  if (!ring || !container) return;
 
-  if (posterEl) {
+  if (!pool || pool.length === 0) {
+    wheelPool = [];
+    ring.innerHTML = "";
+    if (loading) {
+      loading.style.display = "flex";
+      loading.innerHTML = `
+        <i class="fas fa-exclamation-circle" style="font-size:2rem;"></i>
+        <span>Нет доступных фильмов</span>
+      `;
+    }
+    return;
+  }
+
+  if (loading) loading.style.display = "none";
+
+  // Для > 12 берём случайную выборку — пока (до варианта 2)
+  let displayPool = pool;
+  if (pool.length > MAX_RING_CARDS) {
+    displayPool = shuffleArray(pool).slice(0, MAX_RING_CARDS);
+  }
+  wheelPool = displayPool;
+
+  const N = displayPool.length;
+  const angleStep = 360 / N;
+
+  // Динамический радиус по размеру контейнера
+  const size = container.offsetWidth;
+  const cardW = size <= 400 ? 64 : 90;
+  const cardH = size <= 400 ? 115 : 160;
+  const radius = (size - cardH) / 2 - 14;
+
+  ring.innerHTML = "";
+  ring.style.transition = "none";
+
+  // Случайный стартовый угол, чтобы никто не был "выбран" по умолчанию
+  currentRotation = Math.random() * 360;
+  ring.style.transform = `rotate(${currentRotation}deg)`;
+
+  displayPool.forEach((film, i) => {
+    const angle = i * angleStep;
+    const card = document.createElement("div");
+    card.className = "wheel-ring-card";
+    card.dataset.index = i;
+    card.style.width = cardW + "px";
+    card.style.height = cardH + "px";
+    card.style.marginLeft = -(cardW / 2) + "px";
+    card.style.marginTop = -(cardH / 2) + "px";
+    card.style.transform = `rotate(${angle}deg) translateY(-${radius}px)`;
+
+    const imgHeight = cardH - 30;
+
     if (film.poster) {
-      posterEl.innerHTML = `<img src="${film.poster}" alt="${escapeHtml(film.title)}">`;
+      const img = document.createElement("img");
+      img.src = film.poster;
+      img.alt = "";
+      img.style.width = cardW + "px";
+      img.style.height = imgHeight + "px";
+      card.appendChild(img);
     } else {
-      posterEl.innerHTML =
-        '<div class="poster-placeholder"><i class="fas fa-film"></i></div>';
+      const ph = document.createElement("div");
+      ph.className = "wheel-ring-card-placeholder";
+      ph.style.width = cardW + "px";
+      ph.style.height = imgHeight + "px";
+      ph.innerHTML = '<i class="fas fa-film"></i>';
+      card.appendChild(ph);
     }
-  }
 
-  if (previewEl) {
-    previewEl.classList.remove("idle");
-    if (isFinal) {
-      previewEl.classList.add("result");
-    } else {
-      previewEl.classList.remove("result");
-    }
-  }
+    const title = document.createElement("div");
+    title.className = "wheel-ring-card-title";
+    title.textContent = film.title;
+    card.appendChild(title);
 
-  // При финале — лёгкая pop-анимация на постере
-  if (isFinal && posterEl) {
-    posterEl.classList.remove("result-pop");
-    // reflow, чтобы анимация перезапустилась
-    void posterEl.offsetWidth;
-    posterEl.classList.add("result-pop");
+    ring.appendChild(card);
+  });
+}
+
+// ---------- Обновление колеса (пересборка пула + сброс результата) ----------
+function refreshWheel() {
+  resetWheelResult();
+  renderWheelRing(getActivePool());
+  if (!isSpinning) {
+    setWheelReady();
   }
 }
 
-// ---------- Загрузка / сохранение длительности спина ----------
+function resetWheelResult() {
+  const resultEl = document.getElementById("wheel-result");
+  if (resultEl) resultEl.innerHTML = "";
+  const ring = document.getElementById("wheel-ring");
+  if (ring) {
+    ring
+      .querySelectorAll(".wheel-ring-card.winner")
+      .forEach((c) => c.classList.remove("winner"));
+  }
+}
+
+function setWheelReady() {
+  const spinBtn = document.getElementById("spin-button");
+  if (!spinBtn) return;
+  spinBtn.disabled = false;
+  spinBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Крутить!';
+}
+
+// ---------- Настройка длительности ----------
+const SPIN_DURATION_STORAGE_KEY = "spinDuration";
+const SPIN_DURATION_MIN = 0.5;
+const SPIN_DURATION_MAX = 15;
+
 function loadSpinDuration() {
   const minInput = document.getElementById("spin-duration-min");
   const maxInput = document.getElementById("spin-duration-max");
   if (!minInput || !maxInput) return;
-
   try {
     const stored = JSON.parse(
       localStorage.getItem(SPIN_DURATION_STORAGE_KEY) || "{}",
@@ -210,8 +257,6 @@ function saveSpinDuration() {
   }
 }
 
-// Возвращает длительность в секундах.
-// Если min === max — фикс. время, иначе случайное в диапазоне.
 function getSpinDurationSeconds() {
   const minInput = document.getElementById("spin-duration-min");
   const maxInput = document.getElementById("spin-duration-max");
@@ -219,75 +264,96 @@ function getSpinDurationSeconds() {
 
   let min = parseFloat(minInput.value);
   let max = parseFloat(maxInput.value);
-
   if (isNaN(min)) min = 2;
   if (isNaN(max)) max = min;
 
   min = Math.max(SPIN_DURATION_MIN, Math.min(SPIN_DURATION_MAX, min));
   max = Math.max(SPIN_DURATION_MIN, Math.min(SPIN_DURATION_MAX, max));
-
   if (min > max) [min, max] = [max, min];
 
   return min === max ? min : min + Math.random() * (max - min);
 }
 
-// ---------- Анимация колеса ----------
-let spinInterval;
-const SPIN_INTERVAL_MS = 100;
-const SPIN_DURATION_STORAGE_KEY = "spinDuration";
-const SPIN_DURATION_MIN = 0.5;
-const SPIN_DURATION_MAX = 15;
-
+// ---------- Спин ----------
 function spinWheel() {
-  // Защита: не крутим, пока фильмы не загружены
-  if (!allFilms || allFilms.length === 0) {
-    return;
-  }
+  if (isSpinning) return;
+  if (!wheelPool || wheelPool.length === 0) return;
+  if (!allFilms || allFilms.length === 0) return;
 
-  if (spinInterval) {
-    clearInterval(spinInterval);
-    spinInterval = null;
-  }
+  const ring = document.getElementById("wheel-ring");
+  if (!ring) return;
 
-  const available = filteredFilms.filter((f) => !excludedFilmIds.has(f.id));
-  if (available.length === 0) {
-    alert("Нет фильмов для выбора! Измените фильтры или исключения.");
-    return;
-  }
+  isSpinning = true;
+  resetWheelResult();
 
-  // Определяем длительность и количество шагов анимации
-  const durationSeconds = getSpinDurationSeconds();
-  const totalSteps = Math.max(
-    3,
-    Math.round((durationSeconds * 1000) / SPIN_INTERVAL_MS),
-  );
+  const N = wheelPool.length;
+  const angleStep = 360 / N;
+  const winnerIndex = Math.floor(Math.random() * N);
+  const winner = wheelPool[winnerIndex];
 
-  // Меняем кнопку
+  const durationSec = getSpinDurationSeconds();
+  // Больше секунд → больше полных оборотов
+  const fullRotations = Math.max(2, Math.round(2 + durationSec * 1.4));
+
+  // Текущий угол по модулю 360
+  const currentMod = ((currentRotation % 360) + 360) % 360;
+  // Победитель должен оказаться на позиции 0 (верх)
+  const targetMod = (((360 - winnerIndex * angleStep) % 360) + 360) % 360;
+
+  let delta = targetMod - currentMod;
+  if (delta < 0) delta += 360;
+  delta += 360 * fullRotations;
+
+  // Лёгкий перелёт (микро-отскок) — 4 градуса
+  const overshoot = 4;
+  const overshootRotation = currentRotation + delta + overshoot;
+  const finalRotation = currentRotation + delta;
+  currentRotation = finalRotation;
+
+  // Кнопка
   const spinBtn = document.getElementById("spin-button");
   if (spinBtn) {
     spinBtn.disabled = true;
     spinBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Крутим...';
   }
 
-  let step = 0;
-  spinInterval = setInterval(() => {
-    const randomIndex = Math.floor(Math.random() * available.length);
-    updateWheelPreview(available[randomIndex], false);
-    step++;
-    if (step >= totalSteps) {
-      clearInterval(spinInterval);
-      spinInterval = null;
+  // Фаза 1: основной пролёт с перелётом
+  ring.style.transition = `transform ${durationSec}s cubic-bezier(0.12, 0.62, 0.28, 1)`;
+  ring.style.transform = `rotate(${overshootRotation}deg)`;
 
-      const finalFilm = available[Math.floor(Math.random() * available.length)];
+  // Фаза 2: отскок на место
+  setTimeout(
+    () => {
+      ring.style.transition = `transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      ring.style.transform = `rotate(${finalRotation}deg)`;
+
       setTimeout(() => {
-        updateWheelPreview(finalFilm, true);
+        // Подсветка победителя
+        const winnerCard = ring.querySelector(
+          `.wheel-ring-card[data-index="${winnerIndex}"]`,
+        );
+        if (winnerCard) winnerCard.classList.add("winner");
+
+        // Результат
+        const resultEl = document.getElementById("wheel-result");
+        if (resultEl) {
+          resultEl.innerHTML = `
+          <div class="wheel-result-title">
+            🎉 ${escapeHtml(winner.title)}
+            <span class="wheel-result-year">(${winner.year || "—"})</span>
+          </div>
+        `;
+        }
+
+        isSpinning = false;
         if (spinBtn) {
           spinBtn.disabled = false;
           spinBtn.innerHTML = '<i class="fas fa-dice"></i> Крутить ещё раз';
         }
-      }, 300);
-    }
-  }, SPIN_INTERVAL_MS);
+      }, 350);
+    },
+    Math.round(durationSec * 1000) + 50,
+  );
 }
 
 // ---------- Инициализация ----------
@@ -317,15 +383,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
       renderAvailableFilms();
       renderExcludedList();
+      renderWheelRing(getActivePool());
       setWheelReady();
 
-      // Настройка длительности спина
+      // Настройка длительности
       loadSpinDuration();
       const durMinInput = document.getElementById("spin-duration-min");
       const durMaxInput = document.getElementById("spin-duration-max");
       if (durMinInput) durMinInput.addEventListener("change", saveSpinDuration);
       if (durMaxInput) durMaxInput.addEventListener("change", saveSpinDuration);
 
+      // Делегирование клика по кнопке исключения
       document.addEventListener("click", (e) => {
         if (e.target.closest(".exclude-btn")) {
           const btn = e.target.closest(".exclude-btn");
@@ -334,21 +402,21 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      // Обогащаем в фоне — UI уже работает.
-      // НЕ сбрасываем превью: если пользователь уже крутил, результат сохраняется.
+      // Фоновое обогащение — не трогаем кольцо, чтобы не сбрасывать позицию
       enrichFilmsProgressively(films, (updated) => {
         allFilms = updated;
         updateFilteredFilms(() => {
           renderAvailableFilms();
-          // Превью не трогаем — сохранённый результат не должен сбрасываться
         });
         renderExcludedList();
       });
     })
     .catch((error) => {
       console.error("Ошибка загрузки фильмов:", error);
-      document.querySelector(".wheel-preview").innerHTML =
-        '<p style="color: red;">Ошибка загрузки данных</p>';
+      const loading = document.getElementById("wheel-ring-loading");
+      if (loading) {
+        loading.innerHTML = `<span style="color: red;">Ошибка загрузки данных</span>`;
+      }
     });
 
   // ---------- Фильтры ----------
@@ -362,7 +430,7 @@ document.addEventListener("DOMContentLoaded", function () {
       saveFilterState();
       updateFilteredFilms(() => {
         renderAvailableFilms();
-        resetWheelPreview();
+        refreshWheel();
       });
     });
   }
@@ -388,7 +456,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       updateFilteredFilms(() => {
         renderAvailableFilms();
-        resetWheelPreview();
+        refreshWheel();
       });
     });
   }
@@ -422,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
       clearGenreFilter();
       updateFilteredFilms(() => {
         renderAvailableFilms();
-        resetWheelPreview();
+        refreshWheel();
       });
     });
   }
@@ -432,7 +500,7 @@ document.addEventListener("DOMContentLoaded", function () {
       setTimeout(() => {
         updateFilteredFilms(() => {
           renderAvailableFilms();
-          resetWheelPreview();
+          refreshWheel();
         });
       }, 0);
     }
@@ -453,7 +521,7 @@ document.addEventListener("DOMContentLoaded", function () {
       saveFilterState();
       updateFilteredFilms(() => {
         renderAvailableFilms();
-        resetWheelPreview();
+        refreshWheel();
       });
     });
   }

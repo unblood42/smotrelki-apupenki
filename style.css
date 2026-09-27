@@ -648,20 +648,6 @@ body {
 }
 
 /* ===== БЛОК ОЦЕНОК ===== */
-.rating-section {
-  margin-top: 30px;
-  padding: 20px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.rating-section h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #1e293b;
-}
-
 .rating-scales {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -848,42 +834,6 @@ body {
 .wheel-display h2 {
   margin-bottom: 20px;
   color: #1e293b;
-}
-
-.wheel-preview {
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  padding: 20px;
-}
-
-#wheel-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 15px;
-  color: #1e293b;
-}
-
-.wheel-poster {
-  width: 200px;
-  height: 300px;
-  background-color: #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wheel-poster img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .spin-btn {
@@ -1197,12 +1147,6 @@ body {
   cursor: default;
 }
 
-.review-action-btn.primary:not(.ready):not(:disabled) {
-  background: rgba(34, 197, 94, 0.08);
-  color: #16a34a;
-  border-color: #22c55e;
-}
-
 .review-action-btn.primary.saved-pulse {
   background: rgba(34, 197, 94, 0.25);
   border-color: #16a34a;
@@ -1505,71 +1449,169 @@ body {
   cursor: help;
 }
 
-/* ===== Колесо: состояния превью ===== */
-.wheel-preview {
-  transition: background 0.3s ease;
+/* ===== Кольцевое колесо ===== */
+.wheel-ring-container {
+  position: relative;
+  width: 540px;
+  height: 540px;
+  max-width: 90vw;
+  max-height: 90vw;
+  margin: 20px auto;
+  border-radius: 50%;
+  background: radial-gradient(circle, #f8fafc 0%, #e2e8f0 70%, #cbd5e1 100%);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* Финальный результат — лёгкая подсветка */
-.wheel-preview.result {
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.08), rgba(155, 89, 182, 0.08));
-  border-radius: 12px;
+.wheel-ring {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
 }
 
-.wheel-preview.result #wheel-title {
-  color: #9b59b6;
+.wheel-ring-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s;
 }
 
-/* Pop-анимация постера при финале */
-.wheel-poster.result-pop {
-  animation: poster-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+.wheel-ring-card img {
+  display: block;
+  object-fit: cover;
 }
 
-@keyframes poster-pop {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.6;
-  }
-  60% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+.wheel-ring-card-placeholder {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
 }
 
-/* Кнопка «Крутить» — небольшой акцент */
-#spin-button {
-  transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+.wheel-ring-card-title {
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  text-align: center;
+  color: #1e293b;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-#spin-button:not(:disabled):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(52, 152, 219, 0.3);
+.wheel-ring-card.winner {
+  box-shadow: 0 0 0 3px #f59e0b, 0 0 28px rgba(245, 158, 11, 0.7);
+  z-index: 5;
 }
 
-#spin-button:disabled {
-  opacity: 0.7;
-  cursor: wait;
+.wheel-pointer {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
 }
 
-/* ===== Состояние загрузки колеса ===== */
-.wheel-preview.loading .wheel-poster {
-  opacity: 0.7;
+.wheel-pointer-triangle {
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 22px solid #f59e0b;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
 }
 
-.wheel-preview.loading #wheel-title {
+.wheel-ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3498db, #9b59b6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.wheel-ring-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   color: #94a3b8;
+  font-size: 1rem;
+  z-index: 20;
+  border-radius: 50%;
+  background: rgba(248, 250, 252, 0.92);
+  pointer-events: none;
 }
 
-.wheel-preview.loading .poster-placeholder {
-  color: #cbd5e1;
+.wheel-result {
+  min-height: 44px;
+  text-align: center;
+  margin: 15px 0 5px;
 }
 
-#spin-button:disabled {
-  cursor: not-allowed;
+.wheel-result-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1e293b;
+  animation: result-fade-in 0.4s ease-out;
+}
+
+.wheel-result-year {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+@keyframes result-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .wheel-ring-container {
+    width: 340px;
+    height: 340px;
+  }
+  .wheel-ring-center {
+    width: 56px;
+    height: 56px;
+    font-size: 1.1rem;
+  }
+  .wheel-result-title {
+    font-size: 1.1rem;
+  }
 }
 
 /* ===== Настройка длительности спина ===== */
