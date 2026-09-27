@@ -424,7 +424,7 @@ async function updateSuggestBadge() {
       }
     }
   } catch (e) {
-    console.warn("updateSuggestBadge error:", e.message);
+    warn("updateSuggestBadge error:", e.message);
   }
 }
 

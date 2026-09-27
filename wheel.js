@@ -136,7 +136,7 @@ function loadPoolState() {
         : [];
     }
   } catch (e) {
-    console.warn("Не удалось загрузить пул:", e.message);
+    warn("Не удалось загрузить пул:", e.message);
   }
 }
 
@@ -144,7 +144,7 @@ function savePoolState() {
   try {
     localStorage.setItem(POOL_STORAGE_KEY, JSON.stringify(poolState));
   } catch (e) {
-    console.warn("Не удалось сохранить пул:", e.message);
+    warn("Не удалось сохранить пул:", e.message);
   }
 }
 

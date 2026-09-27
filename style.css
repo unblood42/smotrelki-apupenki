@@ -1630,6 +1630,7 @@ body {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
 }
@@ -2097,7 +2098,9 @@ body {
   overflow: hidden;
   background: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
 }
 
 .wheel-reel-card img {
@@ -2119,7 +2122,9 @@ body {
 }
 
 .wheel-reel-card.winner {
-  box-shadow: 0 0 0 3px #f59e0b, 0 0 28px rgba(245, 158, 11, 0.7);
+  box-shadow:
+    0 0 0 3px #f59e0b,
+    0 0 28px rgba(245, 158, 11, 0.7);
   transform: scale(1.06);
   z-index: 5;
 }
@@ -2206,7 +2211,9 @@ body {
   background: white;
   color: #1e293b;
   box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 #available-search-input:focus {
@@ -2244,12 +2251,86 @@ body {
   display: inline-flex;
 }
 
+/* ===== Fallback для Яндекс.Музыки ===== */
+.music-iframe-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
 
+.music-fallback {
+  margin-top: 20px;
+  padding: 18px 22px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
 
+.music-fallback-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3498db, #9b59b6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
 
+.music-fallback-text {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
+.music-fallback-text strong {
+  color: #1e293b;
+  font-size: 1rem;
+}
 
+.music-fallback-text span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
 
+.music-fallback-btn {
+  background: linear-gradient(135deg, #3498db, #9b59b6);
+  white-space: nowrap;
+}
+
+.music-fallback-btn:hover {
+  background: linear-gradient(135deg, #2980b9, #8e44ad);
+  transform: translateY(-2px);
+}
+
+.music-footer-link {
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.music-footer-link:hover {
+  color: #3498db;
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .music-fallback {
+    flex-direction: column;
+    text-align: center;
+  }
+  .music-fallback-text {
+    align-items: center;
+  }
+}
 
 @media (max-width: 600px) {
   .wheel-reel-container {

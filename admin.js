@@ -470,7 +470,7 @@ async function approveSuggestion(suggestionId) {
         }
       }
     } catch (e) {
-      console.warn("TMDB lookup failed:", e.message);
+      warn("TMDB lookup failed:", e.message);
     }
 
     // Проверка дубликата по tmdbId или title+year

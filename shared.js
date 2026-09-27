@@ -1,6 +1,19 @@
 // shared.js
 // Общие данные и функции для главной страницы и страницы колеса
 
+// ---------- DEBUG ----------
+// Переключи на false, чтобы отключить логи в продакшене.
+// Ошибки (console.error) продолжают работать всегда.
+const DEBUG = true;
+
+function log(...args) {
+  if (DEBUG) console.log(...args);
+}
+
+function warn(...args) {
+  if (DEBUG) console.warn(...args);
+}
+
 // ---------- Глобальные переменные состояния ----------
 let allFilms = [];
 let filteredFilms = [];
@@ -29,16 +42,12 @@ async function loadAllFilmsFromFirebase() {
       const snapshot = await firebase.database().ref("films").once("value");
       const data = snapshot.val();
       if (data && Object.keys(data).length > 0) {
-        console.log(
-          `✅ Загружено ${Object.keys(data).length} фильмов из Firebase`,
-        );
+        log(`✅ Загружено ${Object.keys(data).length} фильмов из Firebase`);
         return Object.keys(data)
           .map((key) => ({ id: Number(key), ...data[key] }))
           .sort((a, b) => a.id - b.id);
       }
-      console.warn(
-        "⚠️ Firebase films пусто, используем films.json как bootstrap",
-      );
+      warn("⚠️ Firebase films пусто, используем films.json как bootstrap");
     } catch (e) {
       console.error("Ошибка чтения films из Firebase:", e);
     }
@@ -46,7 +55,7 @@ async function loadAllFilmsFromFirebase() {
     const resp = await fetch("films.json");
     if (!resp.ok) throw new Error("Не удалось загрузить films.json");
     const films = await resp.json();
-    console.log(`📁 Загружено ${films.length} фильмов из films.json`);
+    log(`📁 Загружено ${films.length} фильмов из films.json`);
     return films;
   })();
 
@@ -76,14 +85,11 @@ async function fetchWithProxy(url, retries = 2) {
       clearTimeout(timeoutId);
       if (resp.ok) return await resp.json();
       if (resp.status >= 400 && resp.status < 500) {
-        console.warn(`TMDB ответил ${resp.status} для ${url}`);
+        warn(`TMDB ответил ${resp.status} для ${url}`);
         return null;
       }
     } catch (e) {
-      console.warn(
-        `Попытка ${attempt + 1}/${retries + 1} не удалась:`,
-        e.message,
-      );
+      warn(`Попытка ${attempt + 1}/${retries + 1} не удалась:`, e.message);
     }
     if (attempt < retries) {
       await new Promise((r) => setTimeout(r, 300));
@@ -119,7 +125,7 @@ function loadFilterState() {
       yearFrom = state.yearFrom || "";
       yearTo = state.yearTo || "";
     } catch (e) {
-      console.warn("Не удалось загрузить состояние фильтров", e);
+      warn("Не удалось загрузить состояние фильтров", e);
     }
   }
 }
@@ -281,7 +287,7 @@ async function getMovieDataFromTMDB(film) {
     cache[cacheKey] &&
     Date.now() - cache[cacheKey].timestamp < 7 * 24 * 60 * 60 * 1000
   ) {
-    console.log(`✅ Из кеша: ${title}`);
+    log(`✅ Из кеша: ${title}`);
     const cachedData = { ...cache[cacheKey].data };
     if (cachedData.poster) {
       cachedData.poster = normalizePosterUrl(cachedData.poster);
@@ -290,14 +296,14 @@ async function getMovieDataFromTMDB(film) {
   }
 
   try {
-    console.log(`🔍 Ищем: ${title} (${year})`);
+    log(`🔍 Ищем: ${title} (${year})`);
 
     // Поиск фильма
     const searchUrl = `${TMDB_API_URL}/search/movie?query=${encodeURIComponent(originalTitle)}&year=${year}&language=ru-RU`;
     const searchData = await fetchWithProxy(searchUrl);
 
     if (!searchData.results || searchData.results.length === 0) {
-      console.warn(`❌ Не найдено фильмов по запросу "${title}"`);
+      warn(`❌ Не найдено фильмов по запросу "${title}"`);
       return null;
     }
 
@@ -308,7 +314,7 @@ async function getMovieDataFromTMDB(film) {
       );
       if (exactYearMatch) {
         movie = exactYearMatch;
-        console.log(`✅ Найден фильм с точным годом ${year}: ${movie.title}`);
+        log(`✅ Найден фильм с точным годом ${year}: ${movie.title}`);
       }
     }
 
@@ -349,7 +355,7 @@ async function getMovieDataFromTMDB(film) {
 
     cache[cacheKey] = { data: result, timestamp: Date.now() };
     localStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(cache));
-    console.log(`💾 Сохранено в кеш: ${title}`);
+    log(`💾 Сохранено в кеш: ${title}`);
     return result;
   } catch (error) {
     console.error(`🔥 Ошибка для "${title}":`, error);
@@ -372,7 +378,7 @@ async function searchMoviesInTMDB(query, year) {
     if (!data || !data.results) return [];
     return data.results;
   } catch (e) {
-    console.warn("searchMoviesInTMDB error:", e.message);
+    warn("searchMoviesInTMDB error:", e.message);
     return [];
   }
 }
@@ -413,7 +419,7 @@ async function getMovieDetailsFromTMDB(tmdbId) {
       durationMinutes: detail.runtime || null,
     };
   } catch (e) {
-    console.warn("getMovieDetailsFromTMDB error:", e.message);
+    warn("getMovieDetailsFromTMDB error:", e.message);
     return null;
   }
 }
@@ -456,7 +462,7 @@ async function enrichFilmsProgressively(films, onUpdate) {
         };
         scheduleUpdate();
       } catch (e) {
-        console.warn(`Не удалось обогатить "${film.title}":`, e.message);
+        warn(`Не удалось обогатить "${film.title}":`, e.message);
       }
     }),
   );

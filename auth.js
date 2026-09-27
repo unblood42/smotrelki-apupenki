@@ -121,7 +121,7 @@ function signInWithGoogle() {
   firebase
     .auth()
     .signInWithPopup(provider)
-    .then((result) => console.log("Успешный вход через popup", result.user))
+    .then((result) => log("Успешный вход через popup", result.user))
     .catch((error) => {
       console.error("Ошибка входа через popup:", error);
       if (error.code === "auth/popup-blocked") {
@@ -166,7 +166,7 @@ function saveFavoritesToFirebase(favoritesArray) {
     .database()
     .ref(`users/${user.uid}/favorites`)
     .set(favoritesArray)
-    .then(() => console.log("✅ Избранное сохранено в Firebase"))
+    .then(() => log("✅ Избранное сохранено в Firebase"))
     .catch((error) =>
       console.error("❌ Ошибка сохранения избранного в Firebase:", error),
     );
@@ -180,7 +180,7 @@ function saveExcludedToFirebase(excludedArray) {
     .database()
     .ref(`users/${user.uid}/excluded`)
     .set(excludedArray)
-    .then(() => console.log("✅ Исключённые сохранены в Firebase"))
+    .then(() => log("✅ Исключённые сохранены в Firebase"))
     .catch((error) =>
       console.error("❌ Ошибка сохранения исключённых в Firebase:", error),
     );
@@ -190,14 +190,14 @@ function saveExcludedToFirebase(excludedArray) {
 async function saveRatingToFirebase(filmId, ratingData) {
   const user = firebase.auth().currentUser;
   if (!user) {
-    console.warn("⚠️ saveRatingToFirebase: пользователь не авторизован");
+    warn("⚠️ saveRatingToFirebase: пользователь не авторизован");
     return;
   }
   const path = `users/${user.uid}/ratings/${filmId}`;
-  console.log("💾 Сохранение в Firebase по пути:", path, ratingData);
+  log("💾 Сохранение в Firebase по пути:", path, ratingData);
   try {
     await firebase.database().ref(path).set(ratingData);
-    console.log("✅ Оценка успешно сохранена в Firebase");
+    log("✅ Оценка успешно сохранена в Firebase");
   } catch (error) {
     console.error("❌ Ошибка сохранения оценки в Firebase:", error);
     throw error;
@@ -207,15 +207,15 @@ async function saveRatingToFirebase(filmId, ratingData) {
 async function loadRatingFromFirebase(filmId) {
   const user = firebase.auth().currentUser;
   if (!user) {
-    console.log("📥 loadRatingFromFirebase: пользователь не авторизован");
+    log("📥 loadRatingFromFirebase: пользователь не авторизован");
     return null;
   }
   const path = `users/${user.uid}/ratings/${filmId}`;
-  console.log("📥 Загрузка из Firebase по пути:", path);
+  log("📥 Загрузка из Firebase по пути:", path);
   try {
     const snapshot = await firebase.database().ref(path).once("value");
     const data = snapshot.val();
-    console.log("📦 Получены данные из Firebase:", data);
+    log("📦 Получены данные из Firebase:", data);
     return data;
   } catch (error) {
     console.error("❌ Ошибка загрузки из Firebase:", error);
@@ -229,7 +229,7 @@ async function deleteRatingFromFirebase(filmId) {
   const path = `users/${user.uid}/ratings/${filmId}`;
   try {
     await firebase.database().ref(path).remove();
-    console.log("🗑️ Оценка удалена из Firebase");
+    log("🗑️ Оценка удалена из Firebase");
   } catch (error) {
     console.error("❌ Ошибка удаления оценки:", error);
     throw error;

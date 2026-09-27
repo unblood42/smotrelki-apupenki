@@ -8,7 +8,7 @@ function getMovieDataFromCache(title, year) {
   const cacheKey = `${title}_${year}`;
   const cached = cache[cacheKey];
   if (cached && Date.now() - cached.timestamp < 7 * 24 * 60 * 60 * 1000) {
-    console.log(`✅ Из кеша (film.js): ${title}`);
+    log(`✅ Из кеша (film.js): ${title}`);
     const data = { ...cached.data };
     if (data.poster) data.poster = normalizePosterUrl(data.poster);
     return data;
@@ -547,7 +547,7 @@ function initRatingSystem(filmId) {
         try {
           data = JSON.parse(saved);
         } catch (e) {
-          console.warn("Не удалось распарсить оценку:", e);
+          warn("Не удалось распарсить оценку:", e);
         }
       }
     }
@@ -671,11 +671,11 @@ function initRatingSystem(filmId) {
 
 // Слушатель изменения аутентификации – передаём пользователя в loadRating
 firebase.auth().onAuthStateChanged((user) => {
-  console.log("🔥 onAuthStateChanged в film.js, пользователь:", user?.uid);
+  log("🔥 onAuthStateChanged в film.js, пользователь:", user?.uid);
   if (currentLoadRating) {
-    console.log("🔄 Вызываем currentLoadRating с пользователем");
+    log("🔄 Вызываем currentLoadRating с пользователем");
     currentLoadRating(user);
   } else {
-    console.log("⚠️ currentLoadRating ещё не определена");
+    log("⚠️ currentLoadRating ещё не определена");
   }
 });
