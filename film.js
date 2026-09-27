@@ -175,6 +175,10 @@ function renderFilmDetail(film, container) {
     </div>
     <div class="review-section">
       <h3>Ваш отзыв</h3>
+      <div class="review-hint">
+        <i class="fas fa-info-circle review-hint-icon"></i>
+        <span>Можно поставить только оценку, написать только комментарий — или и то, и другое.</span>
+      </div>
 
       <!-- Свёрнутое состояние: показывается если оценка уже сохранена -->
       <div id="rating-summary" class="rating-summary" style="display: none;">
