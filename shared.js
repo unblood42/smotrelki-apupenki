@@ -565,6 +565,83 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "-");
 }
 
+// ---------- Рендер шапки ----------
+function renderHeader() {
+  const header = document.getElementById("main-header");
+  if (!header) return;
+
+  const path = window.location.pathname;
+  const currentPage = path.split("/").pop() || "index.html";
+
+  const navItems = [
+    { href: "index.html", label: "Главная" },
+    { href: "feed.html", label: "Лента" },
+    { href: "wheel.html", label: "Колесо" },
+    { href: "marathons.html", label: "Марафоны" },
+  ];
+
+  const navHtml = navItems
+    .map((item) => {
+      const isActive =
+        currentPage === item.href ||
+        (item.href === "marathons.html" && currentPage === "marathon.html");
+      return `<a href="${item.href}" ${isActive ? 'class="active"' : ""}>${item.label}</a>`;
+    })
+    .join("");
+
+  header.innerHTML = `
+    <div class="header-inner">
+      <a href="index.html" class="header-logo">🍿 Апупенные смотрелки</a>
+
+      <nav class="header-nav" id="header-nav">
+        ${navHtml}
+      </nav>
+
+      <div class="header-account">
+        <span id="user-email"></span>
+        <button id="auth-button" class="filter-btn">Войти</button>
+      </div>
+
+      <button class="header-burger" id="header-burger" aria-label="Меню">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  `;
+
+  const burger = document.getElementById("header-burger");
+  const nav = document.getElementById("header-nav");
+  if (burger && nav) {
+    burger.addEventListener("click", () => {
+      nav.classList.toggle("open");
+      burger.classList.toggle("open");
+    });
+  }
+}
+
+// ---------- Флоат-кнопка плейлиста (левый нижний угол) ----------
+function renderMusicFab() {
+  if (document.getElementById("music-fab")) return;
+
+  const path = window.location.pathname;
+  const currentPage = path.split("/").pop() || "index.html";
+  const hideOn = ["music.html", "admin.html"];
+  if (hideOn.includes(currentPage)) return;
+
+  const fab = document.createElement("a");
+  fab.href = "music.html";
+  fab.id = "music-fab";
+  fab.className = "music-fab";
+  fab.title = "Плейлист";
+  fab.innerHTML = '<i class="fas fa-music"></i>';
+  document.body.appendChild(fab);
+}
+
+// ---------- Инициализация шапки и fab ----------
+document.addEventListener("DOMContentLoaded", () => {
+  renderHeader();
+  renderMusicFab();
+});
+
 // ---------- МАРАФОНЫ ----------
 
 // Создать марафон
