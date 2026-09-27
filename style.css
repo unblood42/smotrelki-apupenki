@@ -1505,6 +1505,121 @@ body {
   cursor: help;
 }
 
+/* ===== Колесо: состояния превью ===== */
+.wheel-preview {
+  transition: background 0.3s ease;
+}
+
+/* Финальный результат — лёгкая подсветка */
+.wheel-preview.result {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.08), rgba(155, 89, 182, 0.08));
+  border-radius: 12px;
+}
+
+.wheel-preview.result #wheel-title {
+  color: #9b59b6;
+}
+
+/* Pop-анимация постера при финале */
+.wheel-poster.result-pop {
+  animation: poster-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes poster-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  60% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Кнопка «Крутить» — небольшой акцент */
+#spin-button {
+  transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+}
+
+#spin-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(52, 152, 219, 0.3);
+}
+
+#spin-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* ===== Состояние загрузки колеса ===== */
+.wheel-preview.loading .wheel-poster {
+  opacity: 0.7;
+}
+
+.wheel-preview.loading #wheel-title {
+  color: #94a3b8;
+}
+
+.wheel-preview.loading .poster-placeholder {
+  color: #cbd5e1;
+}
+
+#spin-button:disabled {
+  cursor: not-allowed;
+}
+
+/* ===== Настройка длительности спина ===== */
+.spin-duration-settings {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.spin-duration-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.spin-duration-input {
+  width: 64px;
+  padding: 6px 10px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: center;
+  color: #1e293b;
+  background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.spin-duration-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.12);
+}
+
+.spin-duration-sep {
+  color: #cbd5e1;
+}
+
+.spin-duration-unit {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
 
 
 

@@ -104,15 +104,44 @@
         <div class="wheel-left">
           <div class="wheel-display">
             <h2>Случайный фильм</h2>
-            <div class="wheel-preview" id="wheel-preview">
-              <span id="wheel-title">🎡 Нажми "Крутить!"</span>
+            <div class="wheel-preview loading" id="wheel-preview">
+              <span id="wheel-title">⏳ Загрузка фильмов...</span>
               <div class="wheel-poster" id="wheel-poster">
-                <div class="poster-placeholder">?</div>
+                <div class="poster-placeholder">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </div>
               </div>
             </div>
-            <button class="filter-btn spin-btn" id="spin-button">
-              <i class="fas fa-sync-alt"></i> Крутить!
+            <button class="filter-btn spin-btn" id="spin-button" disabled>
+              <i class="fas fa-spinner fa-spin"></i> Загрузка...
             </button>
+
+            <div class="spin-duration-settings">
+              <label for="spin-duration-min" class="spin-duration-label">
+                <i class="fas fa-hourglass-half"></i>
+                Длительность:
+              </label>
+              <input
+                type="number"
+                id="spin-duration-min"
+                class="spin-duration-input"
+                min="0.5"
+                max="15"
+                step="0.5"
+                value="2"
+              />
+              <span class="spin-duration-sep">—</span>
+              <input
+                type="number"
+                id="spin-duration-max"
+                class="spin-duration-input"
+                min="0.5"
+                max="15"
+                step="0.5"
+                value="2"
+              />
+              <span class="spin-duration-unit">сек</span>
+            </div>
           </div>
 
           <!-- Сетка доступных фильмов (с кнопками исключения) -->
