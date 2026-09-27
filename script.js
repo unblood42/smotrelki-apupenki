@@ -26,8 +26,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       populateGenreList();
       loadFilterState();
-      syncGenreCheckboxes();
 
+      syncGenreCheckboxes();
       const searchInput = document.getElementById("search-input");
       if (searchInput) searchInput.value = searchQuery;
 
@@ -36,7 +36,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (yearFromInput) yearFromInput.value = yearFrom;
       if (yearToInput) yearToInput.value = yearTo;
 
+      // Синхронизируем визуальное состояние кнопки «Только избранное»
+      const favoritesBtnInit = document.getElementById("favorites-filter");
+      if (favoritesBtnInit) {
+        favoritesBtnInit.classList.toggle("active", showOnlyFavorites);
+      }
+
       updateSortArrows();
+
       updateFilteredFilms(renderFilmCards);
 
       // Обогащаем в фоне, перерисовываем по мере готовности

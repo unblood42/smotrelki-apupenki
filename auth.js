@@ -187,7 +187,7 @@ function saveExcludedToFirebase(excludedArray) {
   window.userExcluded = new Set(excludedArray);
 }
 
-function saveRatingToFirebase(filmId, ratingData) {
+async function saveRatingToFirebase(filmId, ratingData) {
   const user = firebase.auth().currentUser;
   if (!user) {
     console.warn("⚠️ saveRatingToFirebase: пользователь не авторизован");
@@ -195,14 +195,13 @@ function saveRatingToFirebase(filmId, ratingData) {
   }
   const path = `users/${user.uid}/ratings/${filmId}`;
   console.log("💾 Сохранение в Firebase по пути:", path, ratingData);
-  firebase
-    .database()
-    .ref(path)
-    .set(ratingData)
-    .then(() => console.log("✅ Оценка успешно сохранена в Firebase"))
-    .catch((error) =>
-      console.error("❌ Ошибка сохранения оценки в Firebase:", error),
-    );
+  try {
+    await firebase.database().ref(path).set(ratingData);
+    console.log("✅ Оценка успешно сохранена в Firebase");
+  } catch (error) {
+    console.error("❌ Ошибка сохранения оценки в Firebase:", error);
+    throw error;
+  }
 }
 
 async function loadRatingFromFirebase(filmId) {
@@ -221,6 +220,19 @@ async function loadRatingFromFirebase(filmId) {
   } catch (error) {
     console.error("❌ Ошибка загрузки из Firebase:", error);
     return null;
+  }
+}
+
+async function deleteRatingFromFirebase(filmId) {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+  const path = `users/${user.uid}/ratings/${filmId}`;
+  try {
+    await firebase.database().ref(path).remove();
+    console.log("🗑️ Оценка удалена из Firebase");
+  } catch (error) {
+    console.error("❌ Ошибка удаления оценки:", error);
+    throw error;
   }
 }
 
