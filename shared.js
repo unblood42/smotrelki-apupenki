@@ -573,6 +573,37 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^a-zа-яё0-9]/gi, "-");
 }
 
+// ---------- Отображение пользователя (универсальная утилита) ----------
+// uid + fallback email → { name, initials, avatarUrl }
+// При появлении профилей users/{uid}/profile логику можно обновить здесь —
+// все места вызова (карточки, лента, отзывы) подхватят автоматически.
+function getUserDisplayInfo(uid, fallbackEmail) {
+  const email = fallbackEmail || "";
+  let name;
+  if (email) {
+    const at = email.indexOf("@");
+    name = at > 0 ? email.slice(0, at) : email;
+  } else {
+    name = uid ? `user_${String(uid).slice(0, 6)}` : "Аноним";
+  }
+  return {
+    name,
+    initials: getInitialsFromName(name),
+    avatarUrl: null, // задел на будущее: сюда придёт profile.avatarUrl
+  };
+}
+
+function getInitialsFromName(name) {
+  if (!name) return "?";
+  const parts = name
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 // ---------- Рендер шапки ----------
 function renderHeader() {
   const header = document.getElementById("main-header");
@@ -662,7 +693,8 @@ async function createMarathon(
   coverUrl,
 ) {
   if (!firebase.auth().currentUser) throw new Error("Необходимо войти");
-  const uid = firebase.auth().currentUser.uid;
+  const user = firebase.auth().currentUser;
+  const uid = user.uid;
   const ref = firebase.database().ref("marathons").push();
   await ref.set({
     name: name.trim(),
@@ -673,6 +705,9 @@ async function createMarathon(
     isEditableByAll: !!isEditableByAll,
     canAnyoneMarkWatched: !!canAnyoneMarkWatched,
     films: {},
+    members: {
+      [uid]: user.email || "",
+    },
   });
   return ref.key;
 }
@@ -710,6 +745,18 @@ async function addFilmToMarathon(marathonId, filmId) {
     addedAt: Date.now(),
     watchedBy: {},
   });
+
+  // Денормализация: тот, кто добавил, становится участником
+  if (!marathon.members || !marathon.members[user.uid]) {
+    try {
+      await firebase
+        .database()
+        .ref(`marathons/${marathonId}/members/${user.uid}`)
+        .set(user.email || "");
+    } catch (e) {
+      warn("Не удалось добавить участника:", e.message);
+    }
+  }
 }
 
 // Удалить фильм из марафона
@@ -745,6 +792,18 @@ async function toggleWatched(marathonId, filmId) {
     await ref.remove();
   } else {
     await ref.set(true);
+  }
+
+  // Денормализация: тот, кто отметил, становится участником
+  if (!marathon.members || !marathon.members[user.uid]) {
+    try {
+      await firebase
+        .database()
+        .ref(`marathons/${marathonId}/members/${user.uid}`)
+        .set(user.email || "");
+    } catch (e) {
+      warn("Не удалось добавить участника:", e.message);
+    }
   }
 }
 

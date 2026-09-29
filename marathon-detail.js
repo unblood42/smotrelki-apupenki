@@ -119,9 +119,17 @@ function renderMarathon(data) {
               )
               .join("")}
           </div>
-          <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
-            Добавил: ${escapeHtml(filmData.addedBy || "—")}
-          </div>        
+          <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px;">
+            Добавил: ${escapeHtml(
+              filmData.addedBy
+                ? getUserDisplayInfo(
+                    filmData.addedBy,
+                    (data.members || {})[filmData.addedBy],
+                  ).name
+                : "—",
+            )}
+          </div>
+          ${renderWatchersAvatars(filmData, data.members || {})}  
           <button class="watched-btn filter-btn" data-film-id="${filmId}" style="
             width: 100%;
             background: ${isWatched ? "#22c55e" : "#94a3b8"};
@@ -137,6 +145,9 @@ function renderMarathon(data) {
   });
 
   container.innerHTML = html;
+
+  // --- Участники марафона ---
+  renderMarathonMembers(data.members || {});
 
   // Прогресс: «N из M» + полоса
   const progress = total > 0 ? Math.round((watchedCount / total) * 100) : 0;
@@ -363,3 +374,76 @@ async function init() {
 }
 
 init();
+
+// ---------- Список участников в шапке ----------
+function renderMarathonMembers(membersObj) {
+  const el = document.getElementById("marathon-members");
+  if (!el) return;
+
+  const uids = Object.keys(membersObj || {});
+  if (uids.length === 0) {
+    el.innerHTML = "";
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "flex";
+
+  const MAX_SHOWN = 6;
+  const shown = uids.slice(0, MAX_SHOWN);
+  const rest = uids.length - shown.length;
+
+  const avatarsHtml = shown
+    .map((uid) => {
+      const info = getUserDisplayInfo(uid, membersObj[uid]);
+      return `<div class="marathon-member-avatar" title="${escapeHtml(info.name)}">${escapeHtml(info.initials)}</div>`;
+    })
+    .join("");
+
+  const moreHtml =
+    rest > 0
+      ? `<div class="marathon-member-avatar more" title="ещё ${rest}">+${rest}</div>`
+      : "";
+
+  el.innerHTML = `
+    <span class="marathon-members-label">
+      <i class="fas fa-users"></i> Участники (${uids.length}):
+    </span>
+    <div class="marathon-members-avatars">
+      ${avatarsHtml}${moreHtml}
+    </div>
+  `;
+}
+
+// ---------- Аватарки «кто посмотрел» на карточке фильма ----------
+function renderWatchersAvatars(filmData, membersObj) {
+  const watchedBy = filmData.watchedBy || {};
+  const watchedUids = Object.keys(watchedBy).filter(
+    (uid) => watchedBy[uid] === true,
+  );
+  if (watchedUids.length === 0) return "";
+
+  const MAX_SHOWN = 4;
+  const shown = watchedUids.slice(0, MAX_SHOWN);
+  const rest = watchedUids.length - shown.length;
+
+  const avatarsHtml = shown
+    .map((uid) => {
+      const info = getUserDisplayInfo(uid, membersObj[uid]);
+      return `<div class="marathon-watcher-avatar" title="${escapeHtml(info.name)}">${escapeHtml(info.initials)}</div>`;
+    })
+    .join("");
+
+  const moreHtml =
+    rest > 0
+      ? `<div class="marathon-watcher-avatar more" title="ещё ${rest}">+${rest}</div>`
+      : "";
+
+  return `
+    <div class="marathon-watchers-row">
+      <span class="marathon-watchers-label">Посмотрели:</span>
+      <div class="marathon-watchers-avatars">
+        ${avatarsHtml}${moreHtml}
+      </div>
+    </div>
+  `;
+}

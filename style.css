@@ -3504,6 +3504,131 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
 }
 
+/* ===== Участники марафона (шапка) ===== */
+.marathon-members {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 15px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.marathon-members-label {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.marathon-members-label i {
+  color: #9b59b6;
+  font-size: 0.85rem;
+}
+
+.marathon-members-avatars {
+  display: flex;
+  gap: -6px;
+  align-items: center;
+}
+
+.marathon-members-avatars .marathon-member-avatar {
+  margin-right: -10px;
+}
+
+.marathon-members-avatars .marathon-member-avatar:last-child {
+  margin-right: 0;
+}
+
+.marathon-member-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3498db, #9b59b6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.3px;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: help;
+  transition: transform 0.15s, z-index 0.15s;
+}
+
+.marathon-member-avatar:hover {
+  transform: translateY(-2px);
+  z-index: 5;
+}
+
+.marathon-member-avatar.more {
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 0.68rem;
+}
+
+/* ===== Кто посмотрел (на карточке фильма) ===== */
+.marathon-watchers-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.marathon-watchers-label {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.marathon-watchers-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.marathon-watchers-avatars .marathon-watcher-avatar {
+  margin-right: -8px;
+}
+
+.marathon-watchers-avatars .marathon-watcher-avatar:last-child {
+  margin-right: 0;
+}
+
+.marathon-watcher-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.6rem;
+  letter-spacing: 0.2px;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: help;
+  transition: transform 0.15s;
+}
+
+.marathon-watcher-avatar:hover {
+  transform: translateY(-2px);
+}
+
+.marathon-watcher-avatar.more {
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 0.58rem;
+}
+
 
 
 
