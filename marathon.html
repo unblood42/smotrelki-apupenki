@@ -212,6 +212,60 @@
             "
           ></textarea>
 
+          <label
+            style="
+              display: block;
+              margin-top: 15px;
+              font-weight: 600;
+              font-size: 0.9rem;
+              color: #475569;
+            "
+          >
+            Обложка
+          </label>
+          <div class="cover-upload-row">
+            <input
+              type="file"
+              id="edit-marathon-cover-file"
+              accept="image/*"
+              style="display: none"
+            />
+            <button
+              type="button"
+              id="edit-marathon-cover-btn"
+              class="filter-btn"
+            >
+              <i class="fas fa-image"></i> Загрузить файл
+            </button>
+            <span id="edit-marathon-cover-filename" class="cover-filename"
+              >Файл не выбран</span
+            >
+            <button
+              type="button"
+              id="edit-marathon-cover-remove"
+              class="filter-btn reset-btn"
+              style="display: none"
+            >
+              Удалить обложку
+            </button>
+          </div>
+          <div id="edit-marathon-cover-preview" class="cover-preview"></div>
+          <div
+            id="edit-marathon-cover-progress"
+            class="cover-progress"
+            style="display: none"
+          >
+            <div class="cover-progress-bar">
+              <div
+                class="cover-progress-fill"
+                id="edit-marathon-cover-fill"
+              ></div>
+            </div>
+            <div class="cover-progress-text" id="edit-marathon-cover-percent">
+              0%
+            </div>
+          </div>
+
           <div
             id="edit-marathon-error"
             style="

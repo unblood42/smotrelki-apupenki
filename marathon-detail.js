@@ -4,6 +4,96 @@
 let marathonId = null;
 let marathonData = null;
 
+// ---------- Утилита: сжатие изображения через canvas ----------
+async function compressImage(file, maxSize = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    img.onerror = () => reject(new Error("Не удалось загрузить изображение"));
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxSize) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      } else if (height > maxSize) {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Не удалось сжать изображение"));
+        },
+        "image/jpeg",
+        quality,
+      );
+    };
+  });
+}
+
+// ---------- Загрузка обложки в Cloudinary ----------
+const CLOUDINARY_CLOUD_NAME = "fuwoznkt";
+const CLOUDINARY_UPLOAD_PRESET = "marathon_covers";
+
+async function uploadMarathonCover(marathonId, file, onProgress) {
+  const blob = await compressImage(file, 1200, 0.82);
+
+  const formData = new FormData();
+  formData.append("file", blob, "cover.jpg");
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", `marathons/${marathonId}`);
+  formData.append("public_id", `cover_${Date.now()}`);
+
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress((e.loaded / e.total) * 100);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.secure_url);
+        } catch (e) {
+          reject(new Error("Не удалось прочитать ответ Cloudinary"));
+        }
+      } else {
+        let msg = "Ошибка загрузки в Cloudinary";
+        try {
+          const err = JSON.parse(xhr.responseText);
+          msg = (err.error && err.error.message) || msg;
+        } catch (_) {}
+        reject(new Error(msg));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Сеть недоступна"));
+    xhr.onabort = () => reject(new Error("Загрузка отменена"));
+    xhr.send(formData);
+  });
+}
+
 // ---------- Получить id из URL ----------
 const params = new URLSearchParams(window.location.search);
 marathonId = params.get("id");
@@ -36,7 +126,10 @@ function renderMarathon(data) {
   const coverContainer = document.querySelector(".marathon-cover");
   if (coverContainer) {
     if (data.coverUrl) {
-      coverContainer.innerHTML = `<img src="${data.coverUrl}" alt="Обложка марафона" style="width:100%; max-height:300px; object-fit:cover; border-radius:12px;">`;
+      coverContainer.innerHTML = `
+        <div class="marathon-cover-bg" style="background-image: url('${data.coverUrl}');"></div>
+        <img src="${data.coverUrl}" alt="Обложка марафона" class="marathon-cover-img">
+      `;
     } else {
       coverContainer.innerHTML = "";
     }
@@ -380,16 +473,29 @@ async function init() {
     });
 }
 
-// ---------- Модалка редактирования марафона ----------
+// ---------- Состояние модалки редактирования ----------
+let pendingCoverFile = null;
+let currentCoverUrl = "";
+
 function openEditMarathonModal() {
   if (!marathonData) return;
   const modal = document.getElementById("edit-marathon-modal");
   if (!modal) return;
 
+  pendingCoverFile = null;
+  currentCoverUrl = marathonData.coverUrl || "";
+
   document.getElementById("edit-marathon-name").value = marathonData.name || "";
   document.getElementById("edit-marathon-desc").value =
     marathonData.description || "";
   document.getElementById("edit-marathon-error").textContent = "";
+  document.getElementById("edit-marathon-cover-file").value = "";
+  document.getElementById("edit-marathon-cover-progress").style.display =
+    "none";
+  document.getElementById("edit-marathon-cover-fill").style.width = "0%";
+  document.getElementById("edit-marathon-cover-percent").textContent = "0%";
+
+  updateCoverUI();
 
   modal.style.display = "flex";
   setTimeout(() => {
@@ -397,9 +503,38 @@ function openEditMarathonModal() {
   }, 50);
 }
 
+// Обновление превью и подписей обложки
+function updateCoverUI() {
+  const filenameEl = document.getElementById("edit-marathon-cover-filename");
+  const previewEl = document.getElementById("edit-marathon-cover-preview");
+  const removeBtn = document.getElementById("edit-marathon-cover-remove");
+  if (!filenameEl || !previewEl || !removeBtn) return;
+
+  const hasCover = !!currentCoverUrl || !!pendingCoverFile;
+  removeBtn.style.display = hasCover ? "inline-flex" : "none";
+
+  if (pendingCoverFile) {
+    filenameEl.textContent = pendingCoverFile.name;
+  } else if (currentCoverUrl) {
+    filenameEl.textContent = "Текущая обложка";
+  } else {
+    filenameEl.textContent = "Файл не выбран";
+  }
+
+  if (pendingCoverFile) {
+    const objectUrl = URL.createObjectURL(pendingCoverFile);
+    previewEl.innerHTML = `<img src="${objectUrl}" alt="Превью">`;
+  } else if (currentCoverUrl) {
+    previewEl.innerHTML = `<img src="${currentCoverUrl}" alt="Текущая обложка">`;
+  } else {
+    previewEl.innerHTML = "";
+  }
+}
+
 function closeEditMarathonModal() {
   const modal = document.getElementById("edit-marathon-modal");
   if (modal) modal.style.display = "none";
+  pendingCoverFile = null;
 }
 
 async function saveEditMarathon() {
@@ -407,6 +542,9 @@ async function saveEditMarathon() {
   const descInput = document.getElementById("edit-marathon-desc");
   const errorEl = document.getElementById("edit-marathon-error");
   const saveBtn = document.getElementById("edit-marathon-save");
+  const progressEl = document.getElementById("edit-marathon-cover-progress");
+  const fillEl = document.getElementById("edit-marathon-cover-fill");
+  const percentEl = document.getElementById("edit-marathon-cover-percent");
 
   const name = nameInput.value.trim();
   const description = descInput.value.trim();
@@ -425,12 +563,30 @@ async function saveEditMarathon() {
   errorEl.textContent = "";
 
   try {
-    await updateMarathonMeta(marathonId, { name, description });
+    let coverUrl = currentCoverUrl;
+
+    if (pendingCoverFile) {
+      progressEl.style.display = "flex";
+      fillEl.style.width = "0%";
+      percentEl.textContent = "0%";
+
+      coverUrl = await uploadMarathonCover(
+        marathonId,
+        pendingCoverFile,
+        (progress) => {
+          fillEl.style.width = progress + "%";
+          percentEl.textContent = Math.round(progress) + "%";
+        },
+      );
+    }
+
+    await updateMarathonMeta(marathonId, { name, description, coverUrl });
     closeEditMarathonModal();
     await loadMarathon();
   } catch (e) {
     console.error(e);
     errorEl.textContent = e.message;
+    progressEl.style.display = "none";
   } finally {
     saveBtn.disabled = false;
     saveBtn.innerHTML = '<i class="fas fa-save"></i> Сохранить';
@@ -452,6 +608,46 @@ document
   .getElementById("edit-marathon-modal")
   ?.addEventListener("click", (e) => {
     if (e.target.id === "edit-marathon-modal") closeEditMarathonModal();
+  });
+
+// --- Кнопка «Загрузить файл» ---
+document
+  .getElementById("edit-marathon-cover-btn")
+  ?.addEventListener("click", () => {
+    document.getElementById("edit-marathon-cover-file")?.click();
+  });
+
+// --- Обработчик выбора файла ---
+document
+  .getElementById("edit-marathon-cover-file")
+  ?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    const errorEl = document.getElementById("edit-marathon-error");
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      errorEl.textContent = "Файл должен быть изображением";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      errorEl.textContent = "Файл слишком большой (макс. 10 МБ)";
+      return;
+    }
+
+    errorEl.textContent = "";
+    pendingCoverFile = file;
+    updateCoverUI();
+  });
+
+// --- Кнопка «Удалить обложку» ---
+document
+  .getElementById("edit-marathon-cover-remove")
+  ?.addEventListener("click", () => {
+    if (!confirm("Удалить обложку?")) return;
+    pendingCoverFile = null;
+    currentCoverUrl = "";
+    document.getElementById("edit-marathon-cover-file").value = "";
+    updateCoverUI();
   });
 
 init();

@@ -3559,7 +3559,9 @@ body {
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: help;
-  transition: transform 0.15s, z-index 0.15s;
+  transition:
+    transform 0.15s,
+    z-index 0.15s;
 }
 
 .marathon-member-avatar:hover {
@@ -3629,6 +3631,97 @@ body {
   font-size: 0.58rem;
 }
 
+/* ===== Загрузка обложки марафона ===== */
+.cover-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.cover-filename {
+  color: #64748b;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.cover-preview {
+  margin-top: 10px;
+}
+
+.cover-preview img {
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: block;
+}
+
+.cover-progress {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cover-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cover-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #3498db, #9b59b6);
+  border-radius: 6px;
+  transition: width 0.2s;
+}
+
+.cover-progress-text {
+  color: #9b59b6;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 42px;
+  text-align: right;
+}
+
+/* ===== Обложка марафона ===== */
+.marathon-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #1e293b;
+  margin-bottom: 20px;
+}
+
+.marathon-cover-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(30px) brightness(0.6);
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+.marathon-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 2;
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.4));
+}
 
 
 
@@ -3637,6 +3730,14 @@ body {
 
 
 
+
+
+
+@media (max-width: 600px) {
+  .marathon-cover {
+    aspect-ratio: 16 / 9;
+  }
+}
 
 @media (max-width: 600px) {
   .marathon-progress-wrap {

@@ -822,6 +822,9 @@ async function updateMarathonMeta(marathonId, meta) {
   if (typeof meta.description === "string") {
     updates.description = meta.description.trim();
   }
+  if (typeof meta.coverUrl === "string") {
+    updates.coverUrl = meta.coverUrl.trim();
+  }
   if (Object.keys(updates).length === 0) return;
 
   await firebase.database().ref(`marathons/${marathonId}`).update(updates);
