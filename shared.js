@@ -807,6 +807,26 @@ async function toggleWatched(marathonId, filmId) {
   }
 }
 
+// Обновить название и описание марафона (только создатель)
+async function updateMarathonMeta(marathonId, meta) {
+  const user = firebase.auth().currentUser;
+  if (!user) throw new Error("Необходимо войти");
+  const marathon = await getMarathon(marathonId);
+  if (!marathon) throw new Error("Марафон не найден");
+  if (marathon.createdBy !== user.uid) {
+    throw new Error("Только создатель может редактировать марафон");
+  }
+
+  const updates = {};
+  if (typeof meta.name === "string") updates.name = meta.name.trim();
+  if (typeof meta.description === "string") {
+    updates.description = meta.description.trim();
+  }
+  if (Object.keys(updates).length === 0) return;
+
+  await firebase.database().ref(`marathons/${marathonId}`).update(updates);
+}
+
 // Удалить марафон (только создатель)
 async function deleteMarathon(marathonId) {
   const user = firebase.auth().currentUser;

@@ -46,13 +46,22 @@
           "
         >
           <h2 id="marathon-title" style="margin: 0">Название марафона</h2>
-          <button
-            id="delete-marathon"
-            class="filter-btn"
-            style="background: #ef4444"
-          >
-            Удалить
-          </button>
+          <div style="display: flex; gap: 8px">
+            <button
+              id="edit-marathon"
+              class="filter-btn"
+              style="background: #3498db; display: none"
+            >
+              <i class="fas fa-pen"></i> Редактировать
+            </button>
+            <button
+              id="delete-marathon"
+              class="filter-btn"
+              style="background: #ef4444; display: none"
+            >
+              Удалить
+            </button>
+          </div>
         </div>
         <p id="marathon-desc" style="color: #64748b; margin: 10px 0 15px">
           Описание
@@ -117,6 +126,121 @@
           "
         >
           <!-- Фильмы будут здесь -->
+        </div>
+      </div>
+
+      <div
+        id="edit-marathon-modal"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        "
+      >
+        <div
+          style="
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+          "
+        >
+          <h3 style="margin-top: 0">Редактировать марафон</h3>
+
+          <label
+            style="
+              display: block;
+              margin-top: 15px;
+              font-weight: 600;
+              font-size: 0.9rem;
+              color: #475569;
+            "
+          >
+            Название
+          </label>
+          <input
+            type="text"
+            id="edit-marathon-name"
+            placeholder="Название марафона"
+            style="
+              width: 100%;
+              padding: 10px;
+              margin: 6px 0 0;
+              border: 2px solid #3498db;
+              border-radius: 30px;
+              box-sizing: border-box;
+              font-size: 1rem;
+              font-family: inherit;
+            "
+          />
+
+          <label
+            style="
+              display: block;
+              margin-top: 15px;
+              font-weight: 600;
+              font-size: 0.9rem;
+              color: #475569;
+            "
+          >
+            Описание
+          </label>
+          <textarea
+            id="edit-marathon-desc"
+            placeholder="Описание марафона"
+            style="
+              width: 100%;
+              padding: 10px;
+              margin: 6px 0 0;
+              border: 2px solid #3498db;
+              border-radius: 16px;
+              resize: vertical;
+              min-height: 80px;
+              box-sizing: border-box;
+              font-size: 1rem;
+              font-family: inherit;
+            "
+          ></textarea>
+
+          <div
+            id="edit-marathon-error"
+            style="
+              color: #ef4444;
+              font-size: 0.85rem;
+              margin-top: 10px;
+              min-height: 18px;
+            "
+          ></div>
+
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              justify-content: flex-end;
+              margin-top: 15px;
+            "
+          >
+            <button class="filter-btn reset-btn" id="edit-marathon-cancel">
+              Отмена
+            </button>
+            <button
+              class="filter-btn"
+              id="edit-marathon-save"
+              style="background: #22c55e"
+            >
+              <i class="fas fa-save"></i> Сохранить
+            </button>
+          </div>
         </div>
       </div>
     </main>

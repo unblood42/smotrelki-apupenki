@@ -45,6 +45,14 @@ function renderMarathon(data) {
   document.getElementById("marathon-title").textContent = data.name;
   document.getElementById("marathon-desc").textContent = data.description || "";
 
+  // Кнопки «Редактировать» и «Удалить» — только создателю
+  const user = firebase.auth().currentUser;
+  const isCreator = user && data.createdBy === user.uid;
+  const editBtn = document.getElementById("edit-marathon");
+  const delBtn = document.getElementById("delete-marathon");
+  if (editBtn) editBtn.style.display = isCreator ? "inline-flex" : "none";
+  if (delBtn) delBtn.style.display = isCreator ? "inline-flex" : "none";
+
   const container = document.getElementById("marathon-films");
   const filmIds = Object.keys(data.films || {});
   if (filmIds.length === 0) {
@@ -54,7 +62,6 @@ function renderMarathon(data) {
     return;
   }
 
-  const user = firebase.auth().currentUser;
   let watchedCount = 0;
   const total = filmIds.length;
 
@@ -372,6 +379,80 @@ async function init() {
       loadMarathon();
     });
 }
+
+// ---------- Модалка редактирования марафона ----------
+function openEditMarathonModal() {
+  if (!marathonData) return;
+  const modal = document.getElementById("edit-marathon-modal");
+  if (!modal) return;
+
+  document.getElementById("edit-marathon-name").value = marathonData.name || "";
+  document.getElementById("edit-marathon-desc").value =
+    marathonData.description || "";
+  document.getElementById("edit-marathon-error").textContent = "";
+
+  modal.style.display = "flex";
+  setTimeout(() => {
+    document.getElementById("edit-marathon-name").focus();
+  }, 50);
+}
+
+function closeEditMarathonModal() {
+  const modal = document.getElementById("edit-marathon-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function saveEditMarathon() {
+  const nameInput = document.getElementById("edit-marathon-name");
+  const descInput = document.getElementById("edit-marathon-desc");
+  const errorEl = document.getElementById("edit-marathon-error");
+  const saveBtn = document.getElementById("edit-marathon-save");
+
+  const name = nameInput.value.trim();
+  const description = descInput.value.trim();
+
+  if (!name) {
+    errorEl.textContent = "Название не может быть пустым";
+    return;
+  }
+  if (name.length > 200) {
+    errorEl.textContent = "Название слишком длинное (макс. 200 символов)";
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+  errorEl.textContent = "";
+
+  try {
+    await updateMarathonMeta(marathonId, { name, description });
+    closeEditMarathonModal();
+    await loadMarathon();
+  } catch (e) {
+    console.error(e);
+    errorEl.textContent = e.message;
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="fas fa-save"></i> Сохранить';
+  }
+}
+
+document
+  .getElementById("edit-marathon")
+  ?.addEventListener("click", openEditMarathonModal);
+document
+  .getElementById("edit-marathon-cancel")
+  ?.addEventListener("click", closeEditMarathonModal);
+document
+  .getElementById("edit-marathon-save")
+  ?.addEventListener("click", saveEditMarathon);
+
+// Закрытие модалки по клику на фон
+document
+  .getElementById("edit-marathon-modal")
+  ?.addEventListener("click", (e) => {
+    if (e.target.id === "edit-marathon-modal") closeEditMarathonModal();
+  });
 
 init();
 
