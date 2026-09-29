@@ -3433,6 +3433,76 @@ body {
   transform: scale(1.06);
 }
 
+/* ===== Прогресс марафона ===== */
+.marathon-progress {
+  margin: 0 0 20px;
+}
+
+.marathon-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.marathon-progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.marathon-progress-percent {
+  color: #9b59b6;
+  font-size: 0.9rem;
+}
+
+.marathon-progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.marathon-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #3498db, #9b59b6);
+  transition: width 0.4s ease;
+}
+
+/* ===== Режиссёр на карточке фильма марафона ===== */
+.marathon-film-director {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 4px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.3;
+}
+
+.marathon-film-director i {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ===== Карточка фильма в марафоне — кликабельна ===== */
+.marathon-film-card {
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.marathon-film-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+}
 
 
 
@@ -3440,6 +3510,14 @@ body {
 
 
 
+
+
+
+@media (max-width: 600px) {
+  .marathon-progress-wrap {
+    min-width: 140px;
+  }
+}
 
 @media (max-width: 600px) {
   .friends-ratings-average-score {

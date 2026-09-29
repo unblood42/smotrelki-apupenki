@@ -45,28 +45,19 @@
             gap: 10px;
           "
         >
-          <h2 id="marathon-title">Название марафона</h2>
-          <div>
-            <span
-              id="marathon-progress"
-              style="
-                background: #e2e8f0;
-                padding: 5px 15px;
-                border-radius: 30px;
-                font-weight: bold;
-              "
-              >0%</span
-            >
-            <button
-              id="delete-marathon"
-              class="filter-btn"
-              style="background: #ef4444; margin-left: 10px"
-            >
-              Удалить
-            </button>
-          </div>
+          <h2 id="marathon-title" style="margin: 0">Название марафона</h2>
+          <button
+            id="delete-marathon"
+            class="filter-btn"
+            style="background: #ef4444"
+          >
+            Удалить
+          </button>
         </div>
-        <p id="marathon-desc" style="color: #64748b">Описание</p>
+        <p id="marathon-desc" style="color: #64748b; margin: 10px 0 15px">
+          Описание
+        </p>
+        <div id="marathon-progress" class="marathon-progress"></div>
 
         <!-- Блок добавления фильма с автокомплитом -->
         <div

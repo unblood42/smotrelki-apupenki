@@ -105,9 +105,14 @@ function renderMarathon(data) {
           <h3 style="margin: 0 0 6px 0; font-size: 1rem; line-height: 1.3; color: #1e293b;">
             ${escapeHtml(filmInfo.title)} (${filmInfo.year})
           </h3>
+          ${
+            filmInfo.director
+              ? `<div class="marathon-film-director"><i class="fas fa-video"></i> ${escapeHtml(filmInfo.director)}</div>`
+              : ""
+          }
           <div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px;">
             ${filmInfo.genres
-              .slice(0, 4)
+              .slice(0, 3)
               .map(
                 (g) =>
                   `<span class="film-genre" style="font-size: 0.72rem; padding: 3px 8px; margin: 0;">${escapeHtml(g)}</span>`,
@@ -116,7 +121,7 @@ function renderMarathon(data) {
           </div>
           <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
             Добавил: ${escapeHtml(filmData.addedBy || "—")}
-          </div>
+          </div>        
           <button class="watched-btn filter-btn" data-film-id="${filmId}" style="
             width: 100%;
             background: ${isWatched ? "#22c55e" : "#94a3b8"};
@@ -133,8 +138,22 @@ function renderMarathon(data) {
 
   container.innerHTML = html;
 
+  // Прогресс: «N из M» + полоса
   const progress = total > 0 ? Math.round((watchedCount / total) * 100) : 0;
-  document.getElementById("marathon-progress").textContent = progress + "%";
+  const progressEl = document.getElementById("marathon-progress");
+  if (progressEl) {
+    progressEl.innerHTML = `
+      <div class="marathon-progress-wrap">
+        <div class="marathon-progress-text">
+          <span>${watchedCount} из ${total}</span>
+          <span class="marathon-progress-percent">${progress}%</span>
+        </div>
+        <div class="marathon-progress-bar">
+          <div class="marathon-progress-fill" style="width: ${progress}%"></div>
+        </div>
+      </div>
+    `;
+  }
 
   document.querySelectorAll(".watched-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
@@ -160,6 +179,19 @@ function renderMarathon(data) {
       } catch (err) {
         alert("Ошибка: " + err.message);
       }
+    });
+  });
+
+  // Клик по карточке → страница фильма
+  document.querySelectorAll(".marathon-film-card").forEach((card) => {
+    card.style.cursor = "pointer";
+    card.addEventListener("click", (e) => {
+      // Игнорируем клики по внутренним кнопкам
+      if (e.target.closest(".remove-film-btn")) return;
+      if (e.target.closest(".watched-btn")) return;
+
+      const filmId = card.dataset.filmId;
+      if (filmId) window.location.href = `film.html?id=${filmId}`;
     });
   });
 }
