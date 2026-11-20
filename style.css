@@ -3692,26 +3692,91 @@ body {
   text-align: right;
 }
 
-/* ===== Обложка марафона ===== */
-.marathon-drag-handle {
+/* ===== Кнопки на постере фильма в марафоне ===== */
+.marathon-drag-handle,
+.marathon-film-card .remove-film-btn {
   position: absolute;
   top: 6px;
-  left: 6px;
   z-index: 1;
-  width: 40px;
-  height: 40px;
+  display: grid;
+  place-items: start;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: #1e293b;
-  color: white;
+  background: transparent;
+}
+
+.marathon-drag-handle {
+  left: 6px;
   cursor: grab;
   touch-action: none;
+}
+
+.marathon-film-card .remove-film-btn {
+  right: 6px;
+  justify-items: end;
+  cursor: pointer;
+}
+
+.marathon-drag-handle i,
+.marathon-film-card .remove-film-btn i {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  font-size: 13px;
+}
+
+.marathon-drag-handle i {
+  background: linear-gradient(145deg, rgba(48, 75, 85, 0.9), rgba(15, 23, 42, 0.92));
+  color: #ecfeff;
+}
+
+.marathon-film-card .remove-film-btn i {
+  background: linear-gradient(145deg, rgba(185, 48, 62, 0.96), rgba(115, 25, 38, 0.96));
+  color: #fff;
+  font-size: 15px;
+}
+
+.marathon-drag-handle:hover i,
+.marathon-drag-handle:active i {
+  background: linear-gradient(145deg, #37616a, #172c3d);
+}
+
+.marathon-film-card .remove-film-btn:hover i,
+.marathon-film-card .remove-film-btn:active i {
+  background: linear-gradient(145deg, #d23f52, #961f34);
+}
+
+.marathon-drag-handle:focus-visible,
+.marathon-film-card .remove-film-btn:focus-visible {
+  outline: none;
+}
+
+.marathon-drag-handle:focus-visible i,
+.marathon-film-card .remove-film-btn:focus-visible i {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .marathon-drag-handle:active {
   cursor: grabbing;
 }
 
+@media (pointer: coarse) {
+  .marathon-drag-handle,
+  .marathon-film-card .remove-film-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ===== Обложка марафона ===== */
 .marathon-cover {
   position: relative;
   width: 100%;

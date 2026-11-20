@@ -189,27 +189,14 @@ function renderMarathon(data) {
         flex-direction: column;
       ">
         <div style="position: relative; aspect-ratio: 2/3; background: #e2e8f0;">
-          ${canSort ? '<button type="button" class="marathon-drag-handle" aria-label="Перетащить фильм" title="Перетащить фильм"><i class="fas fa-grip-lines" aria-hidden="true"></i></button>' : ""}
+          ${canSort ? '<button type="button" class="marathon-drag-handle" aria-label="Перетащить фильм" title="Перетащить фильм"><i class="fas fa-grip-vertical" aria-hidden="true"></i></button>' : ""}
           ${
             filmInfo.poster
               ? `<img src="${filmInfo.poster}" alt="${escapeHtml(filmInfo.title)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
               : '<div class="poster-placeholder" style="width:100%;height:100%;"><i class="fas fa-film"></i></div>'
           }
-          <button class="remove-film-btn" data-film-id="${filmId}" title="Удалить фильм" style="
-            position: absolute;
-            top: 6px; right: 6px;
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            background: rgba(239, 68, 68, 0.9);
-            color: white;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-          ">
-            <i class="fas fa-times"></i>
+          <button type="button" class="remove-film-btn" data-film-id="${filmId}" title="Удалить фильм из марафона" aria-label="Удалить фильм из марафона">
+            <i class="fas fa-times" aria-hidden="true"></i>
           </button>
         </div>
         <div style="padding: 12px; display: flex; flex-direction: column; flex: 1;">
