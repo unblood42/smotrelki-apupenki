@@ -728,23 +728,58 @@ async function getMarathon(id) {
   return snapshot.val();
 }
 
+function canEditMarathonFilms(marathon, user) {
+  return !!user && !!marathon &&
+    (marathon.createdBy === user.uid || marathon.isEditableByAll === true);
+}
+
+function getMarathonFilmIds(films = {}) {
+  const sortValue = (value) => Number.isSafeInteger(value) && value >= 0
+    ? value
+    : Infinity;
+  return Object.keys(films).sort((a, b) => {
+    const first = films[a];
+    const second = films[b];
+    return (sortValue(first.order) - sortValue(second.order)) ||
+      (sortValue(first.addedAt) - sortValue(second.addedAt)) ||
+      a.localeCompare(b, "en", { numeric: true });
+  });
+}
+
+async function saveMarathonFilmOrder(marathonId, expectedRevision, filmIds) {
+  const updates = { filmsRevision: expectedRevision + 1 };
+  filmIds.forEach((id, order) => {
+    updates[`films/${id}/order`] = order;
+  });
+  await firebase.database().ref(`marathons/${marathonId}`).update(updates);
+}
+
 // Добавить фильм в марафон
 async function addFilmToMarathon(marathonId, filmId) {
   const user = firebase.auth().currentUser;
   if (!user) throw new Error("Необходимо войти");
   const marathon = await getMarathon(marathonId);
   if (!marathon) throw new Error("Марафон не найден");
-  const canEdit = marathon.createdBy === user.uid || marathon.isEditableByAll;
+  const canEdit = canEditMarathonFilms(marathon, user);
   if (!canEdit) throw new Error("Нет прав на добавление фильмов");
 
-  const ref = firebase
-    .database()
-    .ref(`marathons/${marathonId}/films/${filmId}`);
-  await ref.set({
-    addedBy: user.uid,
-    addedAt: Date.now(),
-    watchedBy: {},
+  const films = marathon.films || {};
+  if (films[filmId]) throw new Error("Фильм уже в марафоне");
+
+  const orderedIds = getMarathonFilmIds(films);
+  orderedIds.push(String(filmId));
+  const updates = {
+    filmsRevision: (marathon.filmsRevision || 0) + 1,
+    [`films/${filmId}`]: {
+      addedBy: user.uid,
+      addedAt: Date.now(),
+      order: orderedIds.length - 1,
+    },
+  };
+  orderedIds.slice(0, -1).forEach((id, order) => {
+    if (films[id].order !== order) updates[`films/${id}/order`] = order;
   });
+  await firebase.database().ref(`marathons/${marathonId}`).update(updates);
 
   // Денормализация: тот, кто добавил, становится участником
   if (!marathon.members || !marathon.members[user.uid]) {
@@ -765,12 +800,15 @@ async function removeFilmFromMarathon(marathonId, filmId) {
   if (!user) throw new Error("Необходимо войти");
   const marathon = await getMarathon(marathonId);
   if (!marathon) throw new Error("Марафон не найден");
-  const canEdit = marathon.createdBy === user.uid || marathon.isEditableByAll;
+  const canEdit = canEditMarathonFilms(marathon, user);
   if (!canEdit) throw new Error("Нет прав на удаление фильмов");
   await firebase
     .database()
-    .ref(`marathons/${marathonId}/films/${filmId}`)
-    .remove();
+    .ref(`marathons/${marathonId}`)
+    .update({
+      filmsRevision: (marathon.filmsRevision || 0) + 1,
+      [`films/${filmId}`]: null,
+    });
 }
 
 // Переключить отметку просмотра (добавить/удалить текущего пользователя)

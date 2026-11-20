@@ -107,22 +107,30 @@ if (!marathonId) {
 async function loadMarathon() {
   try {
     const data = await getMarathon(marathonId);
+    marathonData = data;
     if (!data) {
-      document.querySelector(".marathon-detail").innerHTML =
-        '<p style="color:red;">Марафон не найден</p>';
+      if (!reorderingFilms) {
+        document.getElementById("marathon-films").textContent = "Марафон не найден.";
+      }
       return;
     }
-    marathonData = data;
-    renderMarathon(data);
+    if (!reorderingFilms) renderMarathon(data);
   } catch (e) {
     console.error(e);
-    document.querySelector(".marathon-detail").innerHTML =
-      '<p style="color:red;">Ошибка загрузки марафона</p>';
+    if (!reorderingFilms) {
+      document.getElementById("marathon-films").textContent =
+        "Не удалось загрузить фильмы марафона.";
+    }
   }
 }
 
+let filmSortable = null;
+let reorderingFilms = false;
+
 // ---------- Отрисовка марафона ----------
 function renderMarathon(data) {
+  filmSortable?.destroy();
+  filmSortable = null;
   const coverContainer = document.querySelector(".marathon-cover");
   if (coverContainer) {
     if (data.coverUrl) {
@@ -147,7 +155,9 @@ function renderMarathon(data) {
   if (delBtn) delBtn.style.display = isCreator ? "inline-flex" : "none";
 
   const container = document.getElementById("marathon-films");
-  const filmIds = Object.keys(data.films || {});
+  const filmIds = getMarathonFilmIds(data.films || {});
+  const visibleFilmIds = filmIds.filter((id) => allFilms.some((film) => String(film.id) === id));
+  const canSort = canEditMarathonFilms(data, user) && visibleFilmIds.length > 1 && window.Sortable;
   if (filmIds.length === 0) {
     container.innerHTML =
       '<p style="text-align:center;color:#94a3b8;">В этом марафоне пока нет фильмов</p>';
@@ -179,6 +189,7 @@ function renderMarathon(data) {
         flex-direction: column;
       ">
         <div style="position: relative; aspect-ratio: 2/3; background: #e2e8f0;">
+          ${canSort ? '<button type="button" class="marathon-drag-handle" aria-label="Перетащить фильм" title="Перетащить фильм"><i class="fas fa-grip-lines" aria-hidden="true"></i></button>' : ""}
           ${
             filmInfo.poster
               ? `<img src="${filmInfo.poster}" alt="${escapeHtml(filmInfo.title)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
@@ -246,6 +257,42 @@ function renderMarathon(data) {
 
   container.innerHTML = html;
 
+  if (canSort) {
+    filmSortable = window.Sortable.create(container, {
+      draggable: ".marathon-film-card",
+      handle: ".marathon-drag-handle",
+      dataIdAttr: "data-film-id",
+      animation: 150,
+      onStart() {
+        reorderingFilms = true;
+      },
+      async onEnd(event) {
+        filmSortable.option("disabled", true);
+        try {
+          if (event.oldDraggableIndex === event.newDraggableIndex) return;
+          const revision = data.filmsRevision || 0;
+          if (!canEditMarathonFilms(marathonData, firebase.auth().currentUser) ||
+              (marathonData.filmsRevision || 0) !== revision) {
+            throw new Error("Список изменился");
+          }
+          const reordered = filmSortable.toArray();
+          const visible = new Set(visibleFilmIds);
+          let index = 0;
+          const orderedIds = filmIds.map((id) =>
+            visible.has(id) ? reordered[index++] : id,
+          );
+          await saveMarathonFilmOrder(marathonId, revision, orderedIds);
+        } catch (error) {
+          console.error("Ошибка сохранения порядка:", error);
+          alert("Порядок не сохранён. Список мог измениться. Повторите действие после обновления.");
+        } finally {
+          reorderingFilms = false;
+          await loadMarathon();
+        }
+      },
+    });
+  }
+
   // --- Участники марафона ---
   renderMarathonMembers(data.members || {});
 
@@ -300,6 +347,7 @@ function renderMarathon(data) {
       // Игнорируем клики по внутренним кнопкам
       if (e.target.closest(".remove-film-btn")) return;
       if (e.target.closest(".watched-btn")) return;
+      if (e.target.closest(".marathon-drag-handle")) return;
 
       const filmId = card.dataset.filmId;
       if (filmId) window.location.href = `film.html?id=${filmId}`;
@@ -461,16 +509,34 @@ async function init() {
     }
   }
 
-  // Рендерим марафон
-  await loadMarathon();
-
-  // Подписываемся на изменения марафона в реальном времени
-  firebase
-    .database()
-    .ref(`marathons/${marathonId}`)
-    .on("value", () => {
-      loadMarathon();
-    });
+  const ref = firebase.database().ref(`marathons/${marathonId}`);
+  const onMarathonChanged = (snapshot) => {
+    marathonData = snapshot.val();
+    if (reorderingFilms) return;
+    if (marathonData) {
+      renderMarathon(marathonData);
+    } else {
+      document.getElementById("marathon-films").textContent = "Марафон не найден.";
+    }
+  };
+  firebase.auth().onAuthStateChanged((user) => {
+    ref.off("value", onMarathonChanged);
+    if (user) {
+      ref.on("value", onMarathonChanged, (error) => {
+        console.error(error);
+        document.getElementById("marathon-films").textContent =
+          "Не удалось загрузить фильмы марафона.";
+      });
+    } else {
+      marathonData = null;
+      if (!reorderingFilms) {
+        renderMarathon({ name: "", films: {} });
+        renderMarathonMembers({});
+        document.getElementById("marathon-films").textContent =
+          "Войдите, чтобы открыть марафон.";
+      }
+    }
+  });
 }
 
 // ---------- Состояние модалки редактирования ----------

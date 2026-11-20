@@ -1,0 +1,140 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "ratings": {
+          ".read": "auth != null"
+        }
+      }
+    },
+    "filmRatings": {
+      ".read": "auth != null",
+      "$filmId": {
+        "$uid": {
+          ".write": "auth != null && $uid === auth.uid",
+          ".validate": "newData.hasChildren(['s1', 's2', 's3', 's4', 's5', 'm', 'total', 'updatedAt'])"
+        }
+      }
+    },
+    "films": {
+      ".read": true,
+      ".write": "auth != null && auth.uid === 'FCX08Xm9e0ZKhkwe3qESrtP0ey13'",
+      "$filmId": {
+        ".validate": "newData.hasChildren(['id', 'title', 'year'])",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 300"
+        },
+        "year": {
+          ".validate": "newData.isNumber() && newData.val() >= 1888 && newData.val() <= 2100"
+        },
+        "id": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "filmSuggestions": {
+      ".read": "auth != null",
+      "$suggestionId": {
+        ".write": "auth != null && ( (!data.exists() && newData.exists() && newData.child('suggestedBy').val() === auth.uid && newData.child('status').val() === 'pending') || (data.exists() && auth.uid === 'FCX08Xm9e0ZKhkwe3qESrtP0ey13') || (data.exists() && !newData.exists() && data.child('suggestedBy').val() === auth.uid) )",
+        ".validate": "!newData.exists() || ( newData.hasChildren(['title', 'suggestedBy', 'suggestedAt', 'status']) && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 300 && newData.child('status').val().matches(/^(pending|approved|rejected)$/) )"
+      }
+    },
+    "comments": {
+      ".read": "auth != null",
+      ".indexOn": [
+        "filmId",
+        "uid",
+        "createdAt"
+      ],
+      "$commentId": {
+        ".write": "auth != null && ( (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && newData.exists() && data.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || auth.uid === 'FCX08Xm9e0ZKhkwe3qESrtP0ey13')) || (data.exists() && newData.exists() && auth.uid === 'FCX08Xm9e0ZKhkwe3qESrtP0ey13') )",
+        ".validate": "!newData.exists() || ( newData.hasChildren(['filmId', 'uid', 'createdAt']) && (newData.hasChild('text') || newData.hasChild('ratingSnapshot')) )",
+        "filmId": {
+          ".validate": "newData.isNumber()"
+        },
+        "uid": {
+          ".validate": "!data.exists() ? newData.val() === auth.uid : newData.val() === data.val()"
+        },
+        "text": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 1000)"
+        },
+        "createdAt": {
+          ".validate": "!data.exists() ? newData.isNumber() : newData.val() === data.val()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "ratingSnapshot": {
+          ".validate": "!newData.exists() || newData.hasChildren(['s1', 's2', 's3', 's4', 's5', 'm', 'total'])"
+        }
+      }
+    },
+    "marathons": {
+      ".read": "auth != null",
+      "$marathonId": {
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('createdBy').val() === auth.uid && !newData.hasChild('filmsRevision') && !newData.hasChild('films')) || (data.exists() && !newData.exists() && data.child('createdBy').val() === auth.uid))",
+        ".validate": "!newData.exists() || ( newData.hasChildren(['name', 'createdBy', 'createdAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('createdBy').isString() && newData.child('createdAt').isNumber() )",
+        "createdBy": {
+          ".validate": "!newData.exists() || (!data.exists() ? newData.isString() : newData.val() === data.val())"
+        },
+        "createdAt": {
+          ".validate": "!newData.exists() || (!data.exists() ? newData.isNumber() : newData.val() === data.val())"
+        },
+        "isEditableByAll": {
+          ".validate": "!newData.exists() || (!data.exists() ? true : (root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid))",
+          ".write": "auth != null && root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid"
+        },
+        "canAnyoneMarkWatched": {
+          ".validate": "!newData.exists() || (!data.exists() ? true : (root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid))",
+          ".write": "auth != null && root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid"
+        },
+        "name": {
+          ".validate": "!data.exists() || root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid",
+          ".write": "auth != null && root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid"
+        },
+        "description": {
+          ".validate": "!data.exists() || root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid",
+          ".write": "auth != null && root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid"
+        },
+        "coverUrl": {
+          ".validate": "!data.exists() || root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid",
+          ".write": "auth != null && root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid"
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid",
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+          }
+        },
+        "films": {
+          "$filmId": {
+            ".write": "auth != null && (root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid || root.child('marathons/' + $marathonId).child('isEditableByAll').val() === true) && newData.parent().parent().child('filmsRevision').val() === (root.child('marathons/' + $marathonId).child('filmsRevision').exists() ? root.child('marathons/' + $marathonId).child('filmsRevision').val() : 0) + 1 && ((!data.exists() && newData.exists() && newData.hasChild('order') && !newData.hasChild('watchedBy')) || (data.exists() && !newData.exists()))",
+            ".validate": "!newData.exists() || newData.hasChildren(['addedBy', 'addedAt'])",
+            "addedBy": {
+              ".validate": "!data.exists() ? newData.val() === auth.uid : newData.val() === data.val()"
+            },
+            "addedAt": {
+              ".validate": "!data.exists() ? newData.isNumber() : newData.val() === data.val()"
+            },
+            "watchedBy": {
+              "$uid": {
+                ".write": "auth != null && $uid === auth.uid && ( root.child('marathons/' + $marathonId + '/canAnyoneMarkWatched').val() === true || root.child('marathons/' + $marathonId + '/createdBy').val() === auth.uid )",
+                ".validate": "newData.isBoolean() || !newData.exists()"
+              }
+            },
+            "order": {
+              ".write": "auth != null && (root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid || root.child('marathons/' + $marathonId).child('isEditableByAll').val() === true) && data.parent().exists() && newData.exists() && newData.parent().parent().parent().child('filmsRevision').val() === (root.child('marathons/' + $marathonId).child('filmsRevision').exists() ? root.child('marathons/' + $marathonId).child('filmsRevision').val() : 0) + 1",
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
+            }
+          }
+        },
+        "filmsRevision": {
+          ".write": "auth != null && (root.child('marathons/' + $marathonId).child('createdBy').val() === auth.uid || root.child('marathons/' + $marathonId).child('isEditableByAll').val() === true) && newData.val() === (root.child('marathons/' + $marathonId).child('filmsRevision').exists() ? root.child('marathons/' + $marathonId).child('filmsRevision').val() : 0) + 1",
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
+        }
+      }
+    }
+  }
+}
