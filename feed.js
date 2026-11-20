@@ -6,7 +6,8 @@ let feedAllItems = []; // все записи из comments/, отсортиро
 let feedCurrentUser = null;
 let feedFilterMode = "all"; // "all" | "mine"
 let feedAuthorFilter = ""; // uid или "" (все)
-let feedListener = null;
+let feedAuthResolved = false;
+let feedLoadFailed = false;
 let feedLoaded = false; // true — когда данные из Firebase пришли (пусть даже пустые)
 
 // ---------- Утилиты ----------
@@ -198,6 +199,13 @@ function renderFeed() {
   const listEl = document.getElementById("feed-list");
   if (!listEl) return;
 
+  if (feedAuthResolved && (!feedCurrentUser || feedLoadFailed)) {
+    listEl.innerHTML = feedCurrentUser
+      ? '<div class="feed-empty"><p>Не удалось загрузить ленту.</p></div>'
+      : '<div class="feed-empty"><p>Войдите в аккаунт, чтобы увидеть ленту.</p></div>';
+    return;
+  }
+
   // Данные ещё не пришли — показываем скелетоны
   if (!feedLoaded) {
     renderFeedSkeletons();
@@ -286,30 +294,34 @@ function renderAuthorSelect() {
 
 // ---------- Подписка на comments ----------
 function subscribeFeed() {
-  if (feedListener) return;
-
-  const ref = firebase.database().ref("comments");
-  feedListener = ref.on("value", (snap) => {
-    const data = snap.val() || {};
-    const items = Object.keys(data)
-      .map((id) => ({ id, ...data[id] }))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-    feedAllItems = items;
-    feedLoaded = true;
-    renderAuthorSelect();
-    renderFeed();
+  observeSignedInQuery(firebase.database().ref("comments"), {
+    onSession(user) {
+      feedCurrentUser = user;
+      feedAuthResolved = true;
+      feedLoadFailed = false;
+      feedLoaded = false;
+      feedAllItems = [];
+      renderAuthorSelect();
+      renderFeed();
+    },
+    onValue(snapshot) {
+      feedAllItems = Object.entries(snapshot.val() || {})
+        .map(([id, item]) => ({ id, ...item }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      feedLoaded = true;
+      renderAuthorSelect();
+      renderFeed();
+    },
+    onError(error) {
+      console.error(error);
+      feedLoadFailed = true;
+      renderFeed();
+    },
   });
 }
 
 // ---------- Инициализация ----------
 document.addEventListener("DOMContentLoaded", () => {
-  // Авторизация
-  firebase.auth().onAuthStateChanged((user) => {
-    feedCurrentUser = user;
-    renderFeed();
-  });
-
   // Табы «Все / Только мои»
   document.querySelectorAll(".feed-filter-tab").forEach((tab) => {
     tab.addEventListener("click", () => {

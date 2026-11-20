@@ -5,7 +5,7 @@
 const RECENT_LIMIT = 5;
 
 let recentReviewsAll = [];
-let recentReviewsRendered = false;
+let recentReviewsStatus = null;
 
 // ---------- Рендер ----------
 function renderRecentReviews() {
@@ -13,7 +13,14 @@ function renderRecentReviews() {
   const track = document.getElementById("recent-reviews-track");
   if (!block || !track) return;
 
-  if (!recentReviewsAll || recentReviewsAll.length === 0) {
+  if (recentReviewsStatus) {
+    block.style.display = "block";
+    track.textContent = recentReviewsStatus;
+    return;
+  }
+
+  if (recentReviewsAll.length === 0) {
+    track.textContent = "";
     block.style.display = "none";
     return;
   }
@@ -152,57 +159,26 @@ function recentFormatDate(ts) {
   return `${day} ${month} ${d.getFullYear()}`;
 }
 
-// ---------- Подписка ----------
-function subscribeRecentReviews() {
-  const ref = firebase.database().ref("comments");
-
-  ref.on("value", (snap) => {
-    const data = snap.val() || {};
-    const items = Object.keys(data)
-      .map((id) => ({ id, ...data[id] }))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-    recentReviewsAll = items;
-
-    // Первый рендер — как только есть фильмы ИЛИ через таймаут
-    if (!recentReviewsRendered) {
-      if (allFilms && allFilms.length > 0) {
-        renderRecentReviews();
-        recentReviewsRendered = true;
-      }
-    } else {
-      renderRecentReviews();
-    }
-  });
-}
-
-// ---------- Инициализация ----------
 document.addEventListener("DOMContentLoaded", () => {
-  // Подписываемся сразу — данные придут быстро
-  subscribeRecentReviews();
+  observeSignedInQuery(firebase.database().ref("comments"), {
+    onSession(user) {
+      recentReviewsAll = [];
+      recentReviewsStatus = user ? null : "Войдите в аккаунт, чтобы увидеть свежие отзывы.";
+      renderRecentReviews();
+    },
+    onValue(snapshot) {
+      recentReviewsAll = Object.entries(snapshot.val() || {})
+        .map(([id, item]) => ({ id, ...item }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      recentReviewsStatus = null;
+      renderRecentReviews();
+    },
+    onError(error) {
+      console.error(error);
+      recentReviewsStatus = "Не удалось загрузить свежие отзывы.";
+      renderRecentReviews();
+    },
+  });
 
-  // Как только фильмы загрузятся — сразу перерисуем (если ещё не отрисовано)
-  if (allFilms && allFilms.length > 0) {
-    renderRecentReviews();
-    recentReviewsRendered = true;
-  } else {
-    window.addEventListener(
-      "films-enriched",
-      () => {
-        if (!recentReviewsRendered) {
-          renderRecentReviews();
-          recentReviewsRendered = true;
-        }
-      },
-      { once: true },
-    );
-
-    // Фолбэк — если событие не пришло за 2 секунды
-    setTimeout(() => {
-      if (!recentReviewsRendered && recentReviewsAll.length > 0) {
-        renderRecentReviews();
-        recentReviewsRendered = true;
-      }
-    }, 2000);
-  }
+  window.addEventListener("films-enriched", renderRecentReviews);
 });

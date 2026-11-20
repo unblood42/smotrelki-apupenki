@@ -430,15 +430,26 @@ async function loadMySuggestions() {
   const container = document.getElementById("suggest-list-container");
   if (!container) return;
 
+  const user = suggestCurrentUser;
+  const signInMessage = "<p>Войдите в аккаунт, чтобы увидеть свои предложения.</p>";
+  if (!user) {
+    container.innerHTML = signInMessage;
+    return;
+  }
+
   container.innerHTML =
     '<p style="color:#94a3b8; text-align:center; padding: 20px 0;">Загрузка...</p>';
 
   try {
     const snap = await firebase.database().ref("filmSuggestions").once("value");
+    if (suggestCurrentUser !== user) {
+      if (!suggestCurrentUser) container.innerHTML = signInMessage;
+      return;
+    }
     const data = snap.val() || {};
     const mine = Object.keys(data)
       .map((k) => ({ id: k, ...data[k] }))
-      .filter((s) => s.suggestedBy === suggestCurrentUser.uid)
+      .filter((s) => s.suggestedBy === user.uid)
       .sort((a, b) => (b.suggestedAt || 0) - (a.suggestedAt || 0));
 
     const badge = document.getElementById("suggest-count-badge");
@@ -520,8 +531,12 @@ async function loadMySuggestions() {
       btn.addEventListener("click", () => deleteHistoryItem(btn.dataset.id));
     });
   } catch (e) {
+    if (suggestCurrentUser !== user) {
+      if (!suggestCurrentUser) container.innerHTML = signInMessage;
+      return;
+    }
     console.error(e);
-    container.innerHTML = `<p style="color:#ef4444; text-align:center; padding: 20px 0;">Ошибка: ${e.message}</p>`;
+    container.innerHTML = "<p>Не удалось загрузить ваши предложения.</p>";
   }
 }
 

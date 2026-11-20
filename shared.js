@@ -712,13 +712,6 @@ async function createMarathon(
   return ref.key;
 }
 
-// Получить все марафоны
-async function getMarathons() {
-  const snapshot = await firebase.database().ref("marathons").once("value");
-  const data = snapshot.val() || {};
-  return Object.keys(data).map((id) => ({ id, ...data[id] }));
-}
-
 // Получить один марафон по id
 async function getMarathon(id) {
   const snapshot = await firebase

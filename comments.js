@@ -3,59 +3,37 @@
 // Создание комментария теперь в film.js (объединённая форма «отзыв»).
 
 let commentsFilmId = null;
-let commentsRef = null;
-let commentsListener = null;
 let commentsCurrentUser = null;
-let commentsAuthUnsubscribed = null;
+let stopComments = null;
 
-// ---------- Инициализация для конкретного фильма ----------
 function initCommentsForFilm(filmId) {
-  if (!commentsAuthUnsubscribed) {
-    commentsAuthUnsubscribed = firebase.auth().onAuthStateChanged((user) => {
-      commentsCurrentUser = user;
-    });
-  }
-
-  if (commentsFilmId === filmId && commentsRef) return;
+  if (commentsFilmId === filmId) return;
+  stopComments?.();
   commentsFilmId = filmId;
 
-  if (commentsListener && commentsRef) {
-    commentsRef.off("value", commentsListener);
-  }
+  const list = document.getElementById("comments-list");
+  if (!list) return;
+  const count = document.getElementById("comments-count");
+  const query = firebase.database().ref("comments").orderByChild("filmId").equalTo(filmId);
 
-  // Скелетон пока грузятся комментарии
-  const listContainer = document.getElementById("comments-list");
-  if (listContainer) {
-    listContainer.innerHTML = `
-      ${Array.from({ length: 2 })
-        .map(
-          () => `
-        <div class="comment-item">
-          <div class="skeleton-avatar"></div>
-          <div class="comment-body" style="flex: 1;">
-            <div class="skeleton-line" style="height: 14px; width: 150px; margin-bottom: 8px;"></div>
-            <div class="skeleton-line" style="height: 12px; width: 100%; margin-bottom: 6px;"></div>
-            <div class="skeleton-line" style="height: 12px; width: 85%;"></div>
-          </div>
-        </div>
-      `,
-        )
-        .join("")}
-    `;
-  }
-
-  commentsRef = firebase
-    .database()
-    .ref("comments")
-    .orderByChild("filmId")
-    .equalTo(filmId);
-
-  commentsListener = commentsRef.on("value", (snap) => {
-    const data = snap.val() || {};
-    const list = Object.keys(data)
-      .map((id) => ({ id, ...data[id] }))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    renderCommentsList(list);
+  stopComments = observeSignedInQuery(query, {
+    onSession(user) {
+      commentsCurrentUser = user;
+      if (count) count.textContent = "";
+      list.textContent = user
+        ? "Загрузка комментариев…"
+        : "Войдите в аккаунт, чтобы увидеть комментарии.";
+    },
+    onValue(snapshot) {
+      const items = Object.entries(snapshot.val() || {})
+        .map(([id, comment]) => ({ id, ...comment }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      renderCommentsList(items);
+    },
+    onError(error) {
+      console.error(error);
+      list.textContent = "Не удалось загрузить комментарии.";
+    },
   });
 }
 
@@ -65,7 +43,7 @@ function renderCommentsList(list) {
   const countEl = document.getElementById("comments-count");
   if (!container) return;
 
-  if (countEl) countEl.textContent = list.length;
+  if (countEl) countEl.textContent = `(${list.length})`;
 
   if (list.length === 0) {
     container.innerHTML = `

@@ -148,13 +148,29 @@ function initFriendsRatings(filmId) {
   const section = document.getElementById("friends-ratings-section");
   if (!section) return;
 
-  firebase
-    .database()
-    .ref(`filmRatings/${filmId}`)
-    .on("value", (snap) => {
-      const data = snap.val() || {};
-      renderFriendsRatings(data);
-    });
+  const list = document.getElementById("friends-ratings-list");
+  const summary = document.getElementById("friends-ratings-summary");
+  const count = document.getElementById("friends-ratings-count");
+  const showStatus = (message) => {
+    renderFriendsRatings({});
+    if (count) count.textContent = "";
+    if (summary) summary.textContent = "";
+    list.textContent = message;
+    section.style.display = "block";
+  };
+
+  observeSignedInQuery(firebase.database().ref(`filmRatings/${filmId}`), {
+    onSession(user) {
+      showStatus(user ? "Загрузка оценок…" : "Войдите в аккаунт, чтобы увидеть оценки друзей.");
+    },
+    onValue(snapshot) {
+      renderFriendsRatings(snapshot.val() || {});
+    },
+    onError(error) {
+      console.error(error);
+      showStatus("Не удалось загрузить оценки друзей.");
+    },
+  });
 }
 
 function renderFriendsRatings(data) {
@@ -386,7 +402,7 @@ function renderFilmDetail(film, container) {
     </div>
 
     <div class="comments-section">
-      <h3>Отзывы и оценки (<span id="comments-count">0</span>)</h3>
+      <h3>Отзывы и оценки <span id="comments-count"></span></h3>
       <div id="comments-list">
         <p style="color:#94a3b8; text-align:center; padding: 20px 0;">Загрузка...</p>
       </div>

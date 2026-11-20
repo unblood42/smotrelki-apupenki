@@ -2,6 +2,31 @@
 
 let currentUser = null;
 
+function observeSignedInQuery(query, { onSession, onValue, onError }) {
+  let stopQuery = () => {};
+  const stopAuth = firebase.auth().onAuthStateChanged((user) => {
+    stopQuery();
+    onSession?.(user);
+    if (!user) return;
+
+    let active = true;
+    const receive = (snapshot) => {
+      if (active) onValue(snapshot, user);
+    };
+    stopQuery = () => {
+      active = false;
+      query.off("value", receive);
+    };
+    query.on("value", receive, (error) => {
+      if (active) onError(error);
+    });
+  });
+  return () => {
+    stopAuth();
+    stopQuery();
+  };
+}
+
 function initAuth() {
   firebase
     .auth()
