@@ -241,16 +241,10 @@ async function saveRatingToFirebase(filmId, ratingData) {
   };
 
   try {
-    await Promise.all([
-      firebase
-        .database()
-        .ref(`users/${user.uid}/ratings/${filmId}`)
-        .set(ratingData),
-      firebase
-        .database()
-        .ref(`filmRatings/${filmId}/${user.uid}`)
-        .set(filmRatingEntry),
-    ]);
+    await firebase.database().ref().update({
+      [`users/${user.uid}/ratings/${filmId}`]: ratingData,
+      [`filmRatings/${filmId}/${user.uid}`]: filmRatingEntry,
+    });
     console.log("✅ Оценка сохранена (users + filmRatings)");
   } catch (error) {
     console.error("❌ Ошибка сохранения оценки:", error);
@@ -281,10 +275,10 @@ async function deleteRatingFromFirebase(filmId) {
   const user = firebase.auth().currentUser;
   if (!user) return;
   try {
-    await Promise.all([
-      firebase.database().ref(`users/${user.uid}/ratings/${filmId}`).remove(),
-      firebase.database().ref(`filmRatings/${filmId}/${user.uid}`).remove(),
-    ]);
+    await firebase.database().ref().update({
+      [`users/${user.uid}/ratings/${filmId}`]: null,
+      [`filmRatings/${filmId}/${user.uid}`]: null,
+    });
     console.log("🗑️ Оценка удалена (users + filmRatings)");
   } catch (error) {
     console.error("❌ Ошибка удаления оценки:", error);
